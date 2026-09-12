@@ -242,6 +242,25 @@ final class QuestionRepository extends Repository
         return $this->count("status = 'active'");
     }
 
+    /**
+     * How many active questions a new game could actually serve.
+     *
+     * When questions may not repeat across games, those already used in a
+     * previous game are no longer available, so the raw "active" count
+     * overstates what the next show can draw on.
+     */
+    public function availableCount(bool $allowReuseAcrossGames): int
+    {
+        if ($allowReuseAcrossGames) {
+            return $this->activeCount();
+        }
+        return (int) ($this->db->scalar(
+            "SELECT COUNT(*) FROM questions q
+             WHERE q.status = 'active'
+               AND NOT EXISTS (SELECT 1 FROM game_questions gq WHERE gq.question_id = q.id)"
+        ) ?? 0);
+    }
+
     /** @return array<int,array<string,mixed>> */
     public function hardest(int $limit = 10): array
     {

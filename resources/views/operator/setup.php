@@ -66,8 +66,12 @@ $ready = $questionCount >= max(1, $maxLevel) && $maxLevel > 0 && $participants !
         </li>
         <li class="<?= $questionCount >= max(1, $maxLevel) ? '' : 'is-bad' ?>">
           <span class="check-list__state"><?= $questionCount >= max(1, $maxLevel) ? '✓' : '✕' ?></span>
-          <span class="check-list__label">Active questions</span>
-          <span class="check-list__value"><?= (int) $questionCount ?> available</span>
+          <span class="check-list__label">
+            <?= $allowReuse ? 'Active questions' : 'Unused questions for this game' ?>
+          </span>
+          <span class="check-list__value">
+            <?= (int) $questionCount ?> available<?= $allowReuse ? '' : ' of ' . (int) $totalActive ?>
+          </span>
         </li>
         <li class="<?= $participants !== [] ? '' : 'is-bad' ?>">
           <span class="check-list__state"><?= $participants !== [] ? '✓' : '✕' ?></span>

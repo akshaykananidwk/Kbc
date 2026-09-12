@@ -75,7 +75,9 @@ final class DashboardController extends Controller
      */
     private function readiness(QuestionRepository $questions, PrizeLevelRepository $levels, Database $db): array
     {
+        $allowReuse = SettingsService::bool('repeat_questions', false);
         $activeQuestions = $questions->activeCount();
+        $availableQuestions = $questions->availableCount($allowReuse);
         $maxLevel = $levels->maxLevel();
         $participants = (int) ($db->scalar("SELECT COUNT(*) FROM participants WHERE status IN ('active','played')") ?? 0);
         $lifelines = (int) ($db->scalar('SELECT COUNT(*) FROM lifelines WHERE is_enabled = 1') ?? 0);
@@ -87,9 +89,11 @@ final class DashboardController extends Controller
                 'hint'  => $maxLevel > 0 ? $maxLevel . ' levels' : 'Add prize levels',
             ],
             [
-                'label' => 'Enough active questions',
-                'ok'    => $activeQuestions >= max(1, $maxLevel),
-                'hint'  => $activeQuestions . ' active / ' . $maxLevel . ' needed',
+                'label' => $allowReuse ? 'Enough active questions' : 'Enough unused questions for the next game',
+                'ok'    => $availableQuestions >= max(1, $maxLevel),
+                'hint'  => $allowReuse
+                    ? $activeQuestions . ' active / ' . $maxLevel . ' needed'
+                    : $availableQuestions . ' unused of ' . $activeQuestions . ' active / ' . $maxLevel . ' needed',
             ],
             [
                 'label' => 'At least one participant',

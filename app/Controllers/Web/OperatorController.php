@@ -43,7 +43,9 @@ final class OperatorController extends Controller
             'participants'  => (new ParticipantRepository())->selectable(),
             'ladder'        => $levels->ladder(),
             'activeGame'    => $games->activeGame(),
-            'questionCount' => $questions->activeCount(),
+            'questionCount' => $questions->availableCount(SettingsService::bool('repeat_questions', false)),
+            'totalActive'   => $questions->activeCount(),
+            'allowReuse'    => SettingsService::bool('repeat_questions', false),
             'maxLevel'      => $levels->maxLevel(),
             'orderModes'    => [
                 'fixed'      => 'Fixed order (by prize level, then sort order)',

@@ -93,7 +93,9 @@ $config = [
           <button type="button" class="op-btn op-btn--warn" id="btnQuit">Participant quits</button>
           <button type="button" class="op-btn op-btn--danger" id="btnEnd">End game</button>
           <button type="button" class="op-btn op-btn--danger" id="btnReset">Reset game</button>
-          <a class="op-btn op-btn--gold op-btn--wide" id="btnSummary" href="#" style="display:none;text-decoration:none">View game report →</a>
+          <a class="op-btn op-btn--gold op-btn--wide" id="btnSummary"
+             href="<?= e(url('/operator/summary/' . (int) ($state['game_id'] ?? 0))) ?>"
+             style="display:none;text-decoration:none">View game report →</a>
         </div>
         <div class="op-status mt-2" id="opStatus">Ready.</div>
       </div>
