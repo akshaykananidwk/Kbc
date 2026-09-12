@@ -6,6 +6,7 @@ $config = [
     'pollInterval' => (int) $pollInterval,
     'allowQuit'    => (bool) $allowQuit,
     'requireLock'  => (bool) $requireLock,
+    'audio'        => $audio,
 ];
 ?>
 <!DOCTYPE html>
@@ -139,6 +140,7 @@ $config = [
 </div>
 </div>
 
+<script src="<?= e(asset('assets/js/audio.js')) ?>"></script>
 <script src="<?= e(asset('assets/js/operator.js')) ?>"></script>
 </body>
 </html>

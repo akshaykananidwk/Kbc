@@ -29,6 +29,12 @@ final class OperatorController extends Controller
             'allowQuit'      => SettingsService::bool('allow_quit', true),
             'requireLock'    => SettingsService::bool('require_lock_before_reveal', true),
             'displayUrl'     => \App\Core\Application::url('/display'),
+            'audio'          => [
+                'soundEnabled'  => SettingsService::bool('sound_enabled', true),
+                'musicEnabled'  => false, // music belongs on the TV, not the control desk
+                'synthFallback' => SettingsService::bool('sound_synth_fallback', true),
+                'soundVolume'   => SettingsService::int('sound_volume', 80),
+            ],
         ]);
     }
 

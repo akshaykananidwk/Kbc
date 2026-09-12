@@ -39,10 +39,18 @@ final class SettingsController extends Controller
                 'game'     => 'Game Rules',
                 'display'  => 'Display Screen',
                 'sound'    => 'Sounds',
+                'sound'    => 'Sound Effects',
+                'music'    => 'Music',
+                'certificate' => 'Winner Certificate',
                 'security' => 'Security',
                 'updates'  => 'GitHub Updates',
             ],
             'uploadFields' => $this->uploadFields(),
+            'groupIcons'   => [
+                'general' => '⚙', 'theme' => '🎨', 'game' => '▶', 'display' => '▣',
+                'sound' => '🔔', 'music' => '♪', 'certificate' => '🏅',
+                'security' => '🔒', 'updates' => '⇧',
+            ],
             'timezones'    => \DateTimeZone::listIdentifiers(),
         ]);
     }
@@ -112,24 +120,38 @@ final class SettingsController extends Controller
         return $this->back('/admin/settings');
     }
 
-    /** Upload a logo, Ganpati image, favicon or sound file. */
+    /**
+     * Upload a file straight into a media setting.
+     *
+     * Answers JSON when called from the inline widget so the page does not
+     * have to reload, and falls back to a redirect for plain form posts.
+     */
     public function upload(Request $request): Response
     {
         $key = $request->string('key');
         $fields = $this->uploadFields();
+        $wantsJson = $request->expectsJson() || $request->isAjax();
+
         if (!isset($fields[$key])) {
-            $this->error('That setting does not accept a file upload.');
-            return $this->back('/admin/settings');
+            return $wantsJson
+                ? $this->fail('That setting does not accept a file upload.', 422)
+                : $this->backWithError('That setting does not accept a file upload.');
         }
 
         $file = $request->file('file');
         if ($file === null) {
-            $this->error('Choose a file to upload.');
-            return $this->back('/admin/settings');
+            return $wantsJson
+                ? $this->fail('Choose a file to upload.', 422)
+                : $this->backWithError('Choose a file to upload.');
         }
 
         $spec = $fields[$key];
-        $stored = Uploader::store($file, 'branding', $spec['types'], $spec['max']);
+
+        try {
+            $stored = Uploader::store($file, 'branding', $spec['types'], $spec['max']);
+        } catch (\App\Core\Exceptions\ValidationException $e) {
+            return $wantsJson ? $this->fail($e->getMessage(), 422) : $this->backWithError($e->getMessage());
+        }
 
         $previous = SettingsService::string($key, '');
         if ($previous !== '') {
@@ -137,8 +159,65 @@ final class SettingsController extends Controller
         }
 
         SettingsService::set($key, $stored['url']);
+        Database::instance()->insert('media', [
+            'disk_path'     => $stored['url'],
+            'original_name' => substr((string) $file['name'], 0, 255),
+            'mime_type'     => $stored['mime'],
+            'extension'     => $stored['extension'],
+            'size_bytes'    => $stored['size'],
+            'type'          => $spec['kind'] === 'audio' ? 'audio' : 'image',
+            'collection'    => 'branding',
+            'uploaded_by'   => \App\Services\AuthService::id(),
+            'created_at'    => date('Y-m-d H:i:s'),
+        ]);
+
         AuditService::log('settings.file_uploaded', 'Uploaded a new file for "' . $key . '"', 'settings');
+
+        if ($wantsJson) {
+            return $this->ok('File uploaded.', [
+                'key'       => $key,
+                'url'       => \App\Core\Application::uploadUrl($stored['url']),
+                'stored'    => $stored['url'],
+                'kind'      => $spec['kind'],
+                'filename'  => (string) $file['name'],
+                'size'      => \App\Support\Str::humanBytes($stored['size']),
+            ]);
+        }
+
         $this->success('File uploaded.');
+        return $this->back('/admin/settings');
+    }
+
+    /** Clear a media setting and delete the file behind it. */
+    public function removeFile(Request $request): Response
+    {
+        $key = $request->string('key');
+        $fields = $this->uploadFields();
+        $wantsJson = $request->expectsJson() || $request->isAjax();
+
+        if (!isset($fields[$key])) {
+            return $wantsJson
+                ? $this->fail('That setting does not hold a file.', 422)
+                : $this->backWithError('That setting does not hold a file.');
+        }
+
+        $current = SettingsService::string($key, '');
+        if ($current !== '') {
+            Uploader::delete($current);
+            SettingsService::set($key, '');
+            AuditService::log('settings.file_removed', 'Removed the file for "' . $key . '"', 'settings');
+        }
+
+        if ($wantsJson) {
+            return $this->ok('File removed.', ['key' => $key]);
+        }
+        $this->success('File removed.');
+        return $this->back('/admin/settings');
+    }
+
+    private function backWithError(string $message): Response
+    {
+        $this->error($message);
         return $this->back('/admin/settings');
     }
 
@@ -152,16 +231,27 @@ final class SettingsController extends Controller
         return $this->back('/admin/settings');
     }
 
-    /** @return array<string,array{label:string,types:array<int,string>,max:int}> */
-    private function uploadFields(): array
+    /**
+     * Every setting that holds a file, with what it accepts.
+     *
+     * The settings form renders an upload control inline for each of these,
+     * so nobody has to type a path into a text box.
+     *
+     * @return array<string,array{label:string,types:array<int,string>,max:int,kind:string}>
+     */
+    public function uploadFields(): array
     {
-        $image = ['label' => 'Image', 'types' => ['image'], 'max' => 4 * 1024 * 1024];
-        $audio = ['label' => 'Sound', 'types' => ['audio'], 'max' => 8 * 1024 * 1024];
+        $image = ['label' => 'Image', 'types' => ['image'], 'max' => 4 * 1024 * 1024, 'kind' => 'image'];
+        $audio = ['label' => 'Sound', 'types' => ['audio'], 'max' => 8 * 1024 * 1024, 'kind' => 'audio'];
+        $music = ['label' => 'Music', 'types' => ['audio'], 'max' => 20 * 1024 * 1024, 'kind' => 'audio'];
 
         return [
+            // Branding
             'site_logo'            => $image,
             'ganpati_image'        => $image,
-            'favicon'              => ['label' => 'Favicon', 'types' => ['icon'], 'max' => 512 * 1024],
+            'favicon'              => ['label' => 'Favicon', 'types' => ['icon'], 'max' => 512 * 1024, 'kind' => 'image'],
+
+            // Short effects
             'sound_question_start' => $audio,
             'sound_timer_start'    => $audio,
             'sound_answer_lock'    => $audio,
@@ -171,6 +261,16 @@ final class SettingsController extends Controller
             'sound_lifeline_used'  => $audio,
             'sound_final_win'      => $audio,
             'sound_game_over'      => $audio,
+
+            // Longer music beds
+            'music_intro'          => $music,
+            'music_background'     => $music,
+            'music_suspense'       => $music,
+            'music_victory'        => $music,
+
+            // Certificate artwork
+            'certificate_signature' => $image,
+            'certificate_seal'      => $image,
         ];
     }
 }

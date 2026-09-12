@@ -150,3 +150,140 @@
     }
   };
 })();
+
+/**
+ * Inline media fields.
+ *
+ * Uploads a sound or image straight into its setting over AJAX, so the
+ * admin never has to type a file path or use a separate form.
+ */
+(function () {
+  'use strict';
+
+  var fields = document.querySelectorAll('[data-media-field]');
+  if (!fields.length) return;
+
+  var base = (function () {
+    var link = document.querySelector('link[rel="stylesheet"][href*="assets/css/admin.css"]');
+    if (!link) return '';
+    return link.getAttribute('href').replace(/\/public\/assets\/css\/admin\.css.*$/, '');
+  })();
+
+  function tokenFor(field) {
+    var form = field.closest('form');
+    var input = form ? form.querySelector('input[name="_token"]') : null;
+    if (input) return input.value;
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
+
+  function setStatus(field, message, state) {
+    var status = field.querySelector('[data-media-status]');
+    if (!status) return;
+    status.textContent = message;
+    status.className = 'media-field__status' + (state ? ' is-' + state : '');
+  }
+
+  function renderPreview(field, url, kind) {
+    var preview = field.querySelector('[data-media-preview]');
+    if (!preview) return;
+    preview.innerHTML = '';
+
+    if (!url) {
+      var empty = document.createElement('span');
+      empty.className = 'media-field__empty';
+      empty.textContent = kind === 'audio' ? '♪ No file yet' : 'No image yet';
+      preview.appendChild(empty);
+      return;
+    }
+    if (kind === 'audio') {
+      var audio = document.createElement('audio');
+      audio.controls = true;
+      audio.preload = 'none';
+      audio.src = url;
+      preview.appendChild(audio);
+    } else {
+      var img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      preview.appendChild(img);
+    }
+  }
+
+  fields.forEach(function (field) {
+    var key = field.getAttribute('data-key');
+    var kind = field.getAttribute('data-kind') || 'image';
+    var input = field.querySelector('[data-media-input]');
+    var removeBtn = field.querySelector('[data-media-remove]');
+    var hidden = field.querySelector('[data-media-value]');
+    var pick = field.querySelector('.media-field__pick');
+
+    if (input) {
+      input.addEventListener('change', function () {
+        if (!input.files || !input.files[0]) return;
+        var file = input.files[0];
+
+        field.classList.add('is-uploading');
+        setStatus(field, 'Uploading ' + file.name + '…', 'busy');
+
+        var payload = new FormData();
+        payload.append('_token', tokenFor(field));
+        payload.append('key', key);
+        payload.append('file', file);
+
+        fetch(base + '/admin/settings/upload', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          body: payload
+        }).then(function (response) {
+          return response.json().catch(function () {
+            return { success: false, message: 'The server returned an unreadable response.' };
+          });
+        }).then(function (result) {
+          field.classList.remove('is-uploading');
+          input.value = '';
+
+          if (!result.success) {
+            setStatus(field, result.message || 'Upload failed.', 'error');
+            return;
+          }
+          renderPreview(field, result.data.url, result.data.kind);
+          if (hidden) hidden.value = result.data.stored;
+          if (removeBtn) removeBtn.hidden = false;
+          if (pick) pick.childNodes[0].nodeValue = 'Replace ';
+          setStatus(field, 'Saved: ' + result.data.filename + ' (' + result.data.size + ')', 'done');
+        }).catch(function () {
+          field.classList.remove('is-uploading');
+          setStatus(field, 'Could not reach the server.', 'error');
+        });
+      });
+    }
+
+    if (removeBtn) {
+      removeBtn.addEventListener('click', function () {
+        if (!window.confirm('Remove this file?')) return;
+        setStatus(field, 'Removing…', 'busy');
+
+        var payload = new FormData();
+        payload.append('_token', tokenFor(field));
+        payload.append('key', key);
+
+        fetch(base + '/admin/settings/remove-file', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          body: payload
+        }).then(function (response) { return response.json(); })
+          .then(function (result) {
+            if (!result.success) { setStatus(field, result.message || 'Could not remove.', 'error'); return; }
+            renderPreview(field, '', kind);
+            if (hidden) hidden.value = '';
+            removeBtn.hidden = true;
+            if (pick) pick.childNodes[0].nodeValue = (kind === 'audio' ? 'Upload music ' : 'Upload image ');
+            setStatus(field, 'Removed.', 'done');
+          }).catch(function () { setStatus(field, 'Could not reach the server.', 'error'); });
+      });
+    }
+  });
+})();

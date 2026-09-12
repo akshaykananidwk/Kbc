@@ -20,7 +20,6 @@
   var lastLifelineSignature = '';
   var polling = false;
   var failures = 0;
-  var audioUnlocked = false;
 
   function esc(value) {
     var div = document.createElement('div');
@@ -30,29 +29,52 @@
 
   function el(id) { return document.getElementById(id); }
 
-  /* --- Sound -------------------------------------------------------------- */
-  var players = {};
-  function play(name) {
-    if (!settings.sound || !audioUnlocked) return;
-    var src = (settings.sounds || {})[name];
-    if (!src) return;
-    try {
-      if (!players[name]) { players[name] = new Audio(src); }
-      players[name].currentTime = 0;
-      var promise = players[name].play();
-      if (promise && promise.catch) { promise.catch(function () {}); }
-    } catch (e) { /* sound is never essential */ }
-  }
-  // Browsers block audio until the page is interacted with once.
-  ['click', 'keydown'].forEach(function (evt) {
-    document.addEventListener(evt, function () { audioUnlocked = true; }, { once: true });
+  /* --- Sound and music ---------------------------------------------------- */
+  var audio = new window.QuizAudio({
+    sounds: settings.sounds || {},
+    music: settings.music || {},
+    soundEnabled: settings.sound !== false,
+    musicEnabled: settings.music_enabled !== false,
+    synthFallback: settings.synth_fallback !== false,
+    soundVolume: settings.sound_volume || 80,
+    musicVolume: settings.music_volume || 25,
+    duckOnEffect: settings.duck_on_effect !== false,
+    introLoop: settings.intro_loop !== false
   });
+
+  function play(name) { audio.play(name); }
+
+  // Until the TV browser has been clicked once, autoplay is blocked. Show a
+  // one-time hint so the operator knows to click the screen.
+  audio.onUnlock = function () {
+    var hint = el('dAudioHint');
+    if (hint) hint.hidden = true;
+    applyMusicBed();
+  };
+
+  /** Chooses which music bed suits the current game state. */
+  function applyMusicBed() {
+    if (!audio.isUnlocked()) return;
+    var s = state.state;
+
+    if (!state.has_game || (!state.question && !state.is_finished)) {
+      audio.playBed('intro');
+      return;
+    }
+    if (state.is_finished) {
+      audio.playBed(state.prize && parseFloat(state.prize.final_prize) > 0 ? 'victory' : 'intro');
+      return;
+    }
+    if (s === 'ANSWER_LOCKED') { audio.playBed('suspense'); return; }
+    audio.playBed('background');
+  }
 
   /* --- Timer -------------------------------------------------------------- */
   var timerRemaining = 0;
   var timerTotal = 0;
   var timerRunning = false;
   var timerSyncedAt = 0;
+  var lastTickSecond = -1;
 
   function syncTimer() {
     timerRemaining = state.timer ? state.timer.remaining_ms : 0;
@@ -84,6 +106,13 @@
 
     var fill = el('dTimerFill');
     if (fill) fill.style.width = (ratio * 100) + '%';
+
+    // Audible countdown over the last five seconds.
+    if (timerRunning && seconds !== lastTickSecond && seconds > 0 && seconds <= 5) {
+      lastTickSecond = seconds;
+      play('tick');
+    }
+    if (!timerRunning || seconds > 5) { lastTickSecond = -1; }
   }
 
   /* --- Rendering ---------------------------------------------------------- */
@@ -122,17 +151,80 @@
 
     // Question + options
     setText('dQuestion', hasQuestion ? state.question.text : '');
-    var media = el('dQuestionMedia');
-    if (media) {
-      if (hasQuestion && state.question.image) {
-        media.src = state.question.image; media.hidden = false;
-      } else { media.hidden = true; media.removeAttribute('src'); }
-    }
+    renderQuestionMedia(hasQuestion ? state.question : null);
     renderOptions();
     renderLadder();
     renderLifelines();
     renderOverlay();
     paintTimer();
+
+    audio.update({
+      sounds: settings.sounds,
+      music: settings.music,
+      sound: settings.sound,
+      music_enabled: settings.music_enabled,
+      music_volume: settings.music_volume,
+      sound_volume: settings.sound_volume
+    });
+    applyMusicBed();
+  }
+
+  /**
+   * Shows whatever media the question carries. Audio and video are played
+   * automatically once the screen has been unlocked; an image just shows.
+   */
+  var mediaKey = '';
+  function renderQuestionMedia(question) {
+    var box = el('dQuestionMedia');
+    if (!box) return;
+
+    var key = question ? [question.id, question.image, question.audio, question.video].join('|') : '';
+    if (key === mediaKey) return;
+    mediaKey = key;
+
+    box.innerHTML = '';
+    if (!question) { box.hidden = true; return; }
+
+    var shown = false;
+
+    if (question.video) {
+      var video = document.createElement('video');
+      video.className = 'd-question__video';
+      video.src = question.video;
+      video.controls = false;
+      video.playsInline = true;
+      video.muted = false;
+      box.appendChild(video);
+      if (audio.isUnlocked()) {
+        var p = video.play();
+        if (p && p.catch) p.catch(function () { video.controls = true; });
+      } else {
+        video.controls = true;
+      }
+      shown = true;
+    } else if (question.image) {
+      var img = document.createElement('img');
+      img.className = 'd-question__image';
+      img.src = question.image;
+      img.alt = '';
+      box.appendChild(img);
+      shown = true;
+    }
+
+    if (question.audio) {
+      var player = document.createElement('audio');
+      player.className = 'd-question__audio';
+      player.src = question.audio;
+      player.controls = true;
+      box.appendChild(player);
+      if (audio.isUnlocked()) {
+        var ap = player.play();
+        if (ap && ap.catch) ap.catch(function () {});
+      }
+      shown = true;
+    }
+
+    box.hidden = !shown;
   }
 
   function setText(id, value) {

@@ -322,3 +322,21 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* --- Question media (image, video or audio) ------------------------------- */
+.d-question__media { margin-bottom: 1.6vmin; display: flex; flex-direction: column; align-items: center; gap: 1vmin; }
+.d-question__media[hidden] { display: none; }
+.d-question__image { max-height: 24vmin; border-radius: 1.4vmin; box-shadow: 0 1vmin 3vmin rgba(0,0,0,.5); }
+.d-question__video { max-height: 32vmin; max-width: 100%; border-radius: 1.4vmin; box-shadow: 0 1vmin 3vmin rgba(0,0,0,.5); background: #000; }
+.d-question__audio { width: min(52vmin, 100%); height: 5vmin; }
+
+/* --- One-time "click to enable sound" hint --------------------------------- */
+.d-audio-hint {
+  position: absolute; bottom: 1.2vmin; right: 1.2vmin; z-index: 20;
+  background: rgba(0,0,0,.72); border: .2vmin solid var(--d-secondary);
+  color: var(--d-ink); padding: .8vmin 1.6vmin; border-radius: 999px;
+  font-size: 1.5vmin; font-weight: 700; display: flex; align-items: center; gap: .6vmin;
+  animation: d-hintpulse 2.4s ease-in-out infinite;
+}
+.d-audio-hint[hidden] { display: none; }
+@keyframes d-hintpulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }

@@ -38,10 +38,20 @@ $selectOptions = [
             $label = (string) ($row['label'] ?: ucfirst(str_replace('_', ' ', $key)));
             $id = 'set_' . $key;
             $isUpload = isset($uploadFields[$key]);
-            $width = in_array($type, ['text', 'boolean'], true) ? '' : 'field--6';
+            $width = ($isUpload || in_array($type, ['text', 'boolean'], true)) ? 'field--6' : 'field--6';
+            if ($type === 'text' || $type === 'boolean') { $width = ''; }
             ?>
             <div class="field <?= $width ?>">
-              <?php if ($type === 'boolean'): ?>
+              <?php if ($isUpload): ?>
+                <?= $view->include('partials.media-field', [
+                    'key'       => $key,
+                    'label'     => $label,
+                    'value'     => (string) $row['display_value'],
+                    'spec'      => $uploadFields[$key],
+                    'csrfToken' => $csrfToken,
+                ]) ?>
+
+              <?php elseif ($type === 'boolean'): ?>
                 <label class="check">
                   <input type="checkbox" id="<?= e($id) ?>" name="settings[<?= e($key) ?>]" value="1"
                          <?= (string) $row['display_value'] === '1' ? 'checked' : '' ?>>
@@ -89,18 +99,6 @@ $selectOptions = [
                 <input type="text" id="<?= e($id) ?>" name="settings[<?= e($key) ?>]" value="<?= e($row['display_value']) ?>">
               <?php endif; ?>
 
-              <?php if ($isUpload): ?>
-                <div class="field__help">
-                  <?php if ($row['display_value'] !== ''): ?>
-                    <?php if (str_starts_with($groupKey, 'sound')): ?>
-                      <audio controls src="<?= e(upload_url($row['display_value'])) ?>" style="width:100%;max-width:280px;margin-top:.35rem"></audio>
-                    <?php else: ?>
-                      <img class="thumb mt-1" src="<?= e(upload_url($row['display_value'])) ?>" alt="">
-                    <?php endif; ?>
-                  <?php endif; ?>
-                  Upload a new file below.
-                </div>
-              <?php endif; ?>
             </div>
           <?php endforeach; ?>
         </div>
@@ -115,31 +113,6 @@ $selectOptions = [
     </div>
   </div>
 </form>
-
-<div class="card">
-  <div class="card__head"><h2 class="card__title">Upload logo, images and sounds</h2></div>
-  <div class="card__body">
-    <p class="muted small">
-      Use only original or licensed audio. Do not upload copyrighted quiz-show music.
-    </p>
-    <form method="post" action="<?= e(url('/admin/settings/upload')) ?>" enctype="multipart/form-data" class="filters">
-      <input type="hidden" name="_token" value="<?= e($csrfToken) ?>">
-      <div>
-        <label class="label" for="upload_key">What are you uploading?</label>
-        <select id="upload_key" name="key" required>
-          <?php foreach ($uploadFields as $fieldKey => $spec): ?>
-            <option value="<?= e($fieldKey) ?>"><?= e(ucwords(str_replace('_', ' ', $fieldKey))) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div>
-        <label class="label" for="upload_file">File</label>
-        <input type="file" id="upload_file" name="file" required>
-      </div>
-      <div><button type="submit" class="btn btn--primary btn--block">Upload</button></div>
-    </form>
-  </div>
-</div>
 
 <div class="card">
   <div class="card__head"><h2 class="card__title">Demo data</h2></div>

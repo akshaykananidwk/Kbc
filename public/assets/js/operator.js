@@ -20,6 +20,26 @@
 
   var api = function (path) { return config.base.replace(/\/$/, '') + path; };
 
+  // Short confirmation tones so the operator hears that a control registered,
+  // even when looking at the audience rather than the screen.
+  var audio = new window.QuizAudio({
+    sounds: {},
+    music: {},
+    soundEnabled: config.audio ? config.audio.soundEnabled : true,
+    musicEnabled: false,
+    synthFallback: config.audio ? config.audio.synthFallback : true,
+    soundVolume: config.audio ? config.audio.soundVolume : 60
+  });
+
+  /** Maps an API path to the tone that confirms it. */
+  function toneFor(path) {
+    if (path.indexOf('/timer/start') !== -1 || path.indexOf('/timer/resume') !== -1) return 'timer_start';
+    if (path.indexOf('/lock') !== -1) return 'answer_lock';
+    if (path.indexOf('/lifelines/use') !== -1) return 'lifeline_used';
+    if (path.indexOf('/next') !== -1 || path.indexOf('/start') !== -1) return 'question_start';
+    return '';
+  }
+
   function esc(value) {
     var div = document.createElement('div');
     div.textContent = value === null || value === undefined ? '' : String(value);
@@ -60,6 +80,14 @@
         state = result.data;
         render();
         setStatus(result.message, 'ok');
+
+        if (path.indexOf('/reveal') !== -1) {
+          audio.play(state.state === 'CORRECT' ? 'correct_answer'
+            : (state.state === 'TIME_UP' ? 'game_over' : 'wrong_answer'));
+        } else {
+          var tone = toneFor(path);
+          if (tone) audio.play(tone);
+        }
       } else {
         setStatus(result.message || 'That action could not be completed.', 'bad');
         refresh();

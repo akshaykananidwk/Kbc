@@ -43,6 +43,9 @@ $config = [
   <button type="button" id="dReload">Reload</button>
 </div>
 <div class="d-offline" id="dOffline" hidden>Connection lost — retrying…</div>
+<div class="d-audio-hint" id="dAudioHint">
+  <span>🔊</span> Click anywhere once to enable sound
+</div>
 
 <div class="d-garland"></div>
 
@@ -86,7 +89,7 @@ $config = [
     </div>
 
     <div class="d-question">
-      <img class="d-question__media" id="dQuestionMedia" alt="" hidden>
+      <div class="d-question__media" id="dQuestionMedia" hidden></div>
       <div id="dQuestion"></div>
     </div>
 
@@ -170,6 +173,7 @@ $config = [
 <div class="d-confetti" id="dConfetti"></div>
 </div>
 
+<script src="<?= e(asset('assets/js/audio.js')) ?>"></script>
 <script src="<?= e(asset('assets/js/display.js')) ?>"></script>
 <?php if ($fullscreenAuto): ?>
 <script>
