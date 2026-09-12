@@ -1,0 +1,160 @@
+<?php
+/** @var App\Core\View $view */
+$view->extend('layouts.admin', ['pageTitle' => 'Settings']);
+$view->start('content');
+
+$booleanKeys = [];
+foreach ($groups as $rows) {
+    foreach ($rows as $row) {
+        if ($row['type'] === 'boolean') { $booleanKeys[] = (string) $row['key_name']; }
+    }
+}
+$selectOptions = [
+    'question_order' => ['fixed' => 'Fixed order', 'random' => 'Random', 'category' => 'By level category', 'difficulty' => 'By level difficulty'],
+    'timer_style'    => ['ring' => 'Ring', 'bar' => 'Bar', 'digits' => 'Digits only'],
+    'language'       => ['gu' => 'ગુજરાતી (Gujarati)', 'hi' => 'हिन्दी (Hindi)', 'en' => 'English'],
+];
+?>
+<div class="page-head">
+  <div><h1>Settings</h1><p class="page-head__sub">Everything the show uses is configurable here — no code changes needed.</p></div>
+</div>
+
+<form method="post" action="<?= e(url('/admin/settings')) ?>">
+  <input type="hidden" name="_token" value="<?= e($csrfToken) ?>">
+  <input type="hidden" name="settings_boolean_keys" value="<?= e(implode(',', $booleanKeys)) ?>">
+
+  <?php foreach ($groups as $groupKey => $rows): ?>
+    <div class="card">
+      <div class="card__head">
+        <h2 class="card__title"><?= e($groupNames[$groupKey] ?? ucfirst($groupKey)) ?></h2>
+        <span class="badge"><?= count($rows) ?> setting(s)</span>
+      </div>
+      <div class="card__body">
+        <div class="form-grid">
+          <?php foreach ($rows as $row): ?>
+            <?php
+            $key = (string) $row['key_name'];
+            $type = (string) $row['type'];
+            $label = (string) ($row['label'] ?: ucfirst(str_replace('_', ' ', $key)));
+            $id = 'set_' . $key;
+            $isUpload = isset($uploadFields[$key]);
+            $width = in_array($type, ['text', 'boolean'], true) ? '' : 'field--6';
+            ?>
+            <div class="field <?= $width ?>">
+              <?php if ($type === 'boolean'): ?>
+                <label class="check">
+                  <input type="checkbox" id="<?= e($id) ?>" name="settings[<?= e($key) ?>]" value="1"
+                         <?= (string) $row['display_value'] === '1' ? 'checked' : '' ?>>
+                  <span><?= e($label) ?>
+                    <?php if (($row['description'] ?? '') !== ''): ?><small><?= e($row['description']) ?></small><?php endif; ?>
+                  </span>
+                </label>
+
+              <?php elseif (isset($selectOptions[$key])): ?>
+                <label class="label" for="<?= e($id) ?>"><?= e($label) ?></label>
+                <select id="<?= e($id) ?>" name="settings[<?= e($key) ?>]">
+                  <?php foreach ($selectOptions[$key] as $optionValue => $optionLabel): ?>
+                    <option value="<?= e($optionValue) ?>" <?= (string) $row['display_value'] === (string) $optionValue ? 'selected' : '' ?>><?= e($optionLabel) ?></option>
+                  <?php endforeach; ?>
+                </select>
+
+              <?php elseif ($key === 'timezone'): ?>
+                <label class="label" for="<?= e($id) ?>"><?= e($label) ?></label>
+                <select id="<?= e($id) ?>" name="settings[<?= e($key) ?>]">
+                  <?php foreach ($timezones as $zone): ?>
+                    <option value="<?= e($zone) ?>" <?= (string) $row['display_value'] === $zone ? 'selected' : '' ?>><?= e($zone) ?></option>
+                  <?php endforeach; ?>
+                </select>
+
+              <?php elseif (str_ends_with($key, '_color')): ?>
+                <label class="label" for="<?= e($id) ?>"><?= e($label) ?></label>
+                <input type="color" id="<?= e($id) ?>" name="settings[<?= e($key) ?>]" value="<?= e($row['display_value'] ?: '#b3141a') ?>">
+
+              <?php elseif ($type === 'integer'): ?>
+                <label class="label" for="<?= e($id) ?>"><?= e($label) ?></label>
+                <input type="number" id="<?= e($id) ?>" name="settings[<?= e($key) ?>]" value="<?= e($row['display_value']) ?>">
+
+              <?php elseif ($type === 'text'): ?>
+                <label class="label" for="<?= e($id) ?>"><?= e($label) ?></label>
+                <textarea id="<?= e($id) ?>" name="settings[<?= e($key) ?>]" rows="2"><?= e($row['display_value']) ?></textarea>
+
+              <?php elseif ((bool) $row['is_secret']): ?>
+                <label class="label" for="<?= e($id) ?>"><?= e($label) ?>
+                  <span class="label__hint"><?= $row['is_configured'] ? '(configured — leave masked to keep it)' : '(not set)' ?></span></label>
+                <input type="password" id="<?= e($id) ?>" name="settings[<?= e($key) ?>]"
+                       value="<?= e($row['display_value']) ?>" autocomplete="off">
+
+              <?php else: ?>
+                <label class="label" for="<?= e($id) ?>"><?= e($label) ?></label>
+                <input type="text" id="<?= e($id) ?>" name="settings[<?= e($key) ?>]" value="<?= e($row['display_value']) ?>">
+              <?php endif; ?>
+
+              <?php if ($isUpload): ?>
+                <div class="field__help">
+                  <?php if ($row['display_value'] !== ''): ?>
+                    <?php if (str_starts_with($groupKey, 'sound')): ?>
+                      <audio controls src="<?= e(upload_url($row['display_value'])) ?>" style="width:100%;max-width:280px;margin-top:.35rem"></audio>
+                    <?php else: ?>
+                      <img class="thumb mt-1" src="<?= e(upload_url($row['display_value'])) ?>" alt="">
+                    <?php endif; ?>
+                  <?php endif; ?>
+                  Upload a new file below.
+                </div>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    </div>
+  <?php endforeach; ?>
+
+  <div class="card">
+    <div class="card__foot">
+      <button type="submit" class="btn btn--primary btn--lg">Save all settings</button>
+      <span class="muted small">Secrets left as <code>****</code> keep their current value.</span>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  <div class="card__head"><h2 class="card__title">Upload logo, images and sounds</h2></div>
+  <div class="card__body">
+    <p class="muted small">
+      Use only original or licensed audio. Do not upload copyrighted quiz-show music.
+    </p>
+    <form method="post" action="<?= e(url('/admin/settings/upload')) ?>" enctype="multipart/form-data" class="filters">
+      <input type="hidden" name="_token" value="<?= e($csrfToken) ?>">
+      <div>
+        <label class="label" for="upload_key">What are you uploading?</label>
+        <select id="upload_key" name="key" required>
+          <?php foreach ($uploadFields as $fieldKey => $spec): ?>
+            <option value="<?= e($fieldKey) ?>"><?= e(ucwords(str_replace('_', ' ', $fieldKey))) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div>
+        <label class="label" for="upload_file">File</label>
+        <input type="file" id="upload_file" name="file" required>
+      </div>
+      <div><button type="submit" class="btn btn--primary btn--block">Upload</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__head"><h2 class="card__title">Demo data</h2></div>
+  <div class="card__body">
+    <p class="small muted mb-0">
+      Removes the sample questions, gifts and participants that were installed with the demo option.
+      Anything already used in a real game is kept so your history stays intact.
+    </p>
+  </div>
+  <div class="card__foot">
+    <form method="post" action="<?= e(url('/admin/settings/demo/remove')) ?>"
+          data-confirm="Remove all unused demo data? This cannot be undone.">
+      <input type="hidden" name="_token" value="<?= e($csrfToken) ?>">
+      <button type="submit" class="btn btn--danger">Remove demo data</button>
+    </form>
+  </div>
+</div>
+<?php $view->stop(); ?>

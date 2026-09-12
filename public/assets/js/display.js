@@ -1,0 +1,467 @@
+/**
+ * Audience display screen.
+ *
+ * Reads only /api/display/state, which is sanitised server-side: the correct
+ * answer simply is not in the payload until the operator reveals the result.
+ */
+(function () {
+  'use strict';
+
+  var root = document.getElementById('dRoot');
+  if (!root) return;
+
+  var config = JSON.parse(root.getAttribute('data-config'));
+  var state = JSON.parse(document.getElementById('dState').textContent);
+  var settings = state.settings || {};
+
+  var lastVersion = -1;
+  var lastState = '';
+  var lastLevel = -1;
+  var lastLifelineSignature = '';
+  var polling = false;
+  var failures = 0;
+  var audioUnlocked = false;
+
+  function esc(value) {
+    var div = document.createElement('div');
+    div.textContent = value === null || value === undefined ? '' : String(value);
+    return div.innerHTML;
+  }
+
+  function el(id) { return document.getElementById(id); }
+
+  /* --- Sound -------------------------------------------------------------- */
+  var players = {};
+  function play(name) {
+    if (!settings.sound || !audioUnlocked) return;
+    var src = (settings.sounds || {})[name];
+    if (!src) return;
+    try {
+      if (!players[name]) { players[name] = new Audio(src); }
+      players[name].currentTime = 0;
+      var promise = players[name].play();
+      if (promise && promise.catch) { promise.catch(function () {}); }
+    } catch (e) { /* sound is never essential */ }
+  }
+  // Browsers block audio until the page is interacted with once.
+  ['click', 'keydown'].forEach(function (evt) {
+    document.addEventListener(evt, function () { audioUnlocked = true; }, { once: true });
+  });
+
+  /* --- Timer -------------------------------------------------------------- */
+  var timerRemaining = 0;
+  var timerTotal = 0;
+  var timerRunning = false;
+  var timerSyncedAt = 0;
+
+  function syncTimer() {
+    timerRemaining = state.timer ? state.timer.remaining_ms : 0;
+    timerTotal = state.timer ? state.timer.total_ms : 0;
+    timerRunning = !!(state.timer && state.timer.running);
+    timerSyncedAt = Date.now();
+  }
+
+  function paintTimer() {
+    var remaining = timerRunning
+      ? Math.max(0, timerRemaining - (Date.now() - timerSyncedAt))
+      : timerRemaining;
+    var seconds = Math.ceil(remaining / 1000);
+    var ratio = timerTotal > 0 ? remaining / timerTotal : 0;
+
+    var label = el('dTimerLabel');
+    var barLabel = el('dTimerBarLabel');
+    if (label) label.textContent = seconds < 0 ? '0' : String(seconds);
+    if (barLabel) barLabel.textContent = (seconds < 0 ? 0 : seconds) + 's';
+
+    var ring = el('dRing');
+    var value = el('dRingValue');
+    if (ring && value) {
+      var circumference = 2 * Math.PI * 45;
+      value.style.strokeDasharray = String(circumference);
+      value.style.strokeDashoffset = String(circumference * (1 - ratio));
+      ring.className = 'd-ring' + (ratio <= 0.17 ? ' is-danger' : (ratio <= 0.34 ? ' is-warn' : ''));
+    }
+
+    var fill = el('dTimerFill');
+    if (fill) fill.style.width = (ratio * 100) + '%';
+  }
+
+  /* --- Rendering ---------------------------------------------------------- */
+  function render() {
+    syncTimer();
+    settings = state.settings || settings;
+
+    var hasQuestion = !!state.question;
+    var showWelcome = !state.has_game || (!hasQuestion && !state.is_finished);
+
+    el('dWelcome').hidden = !showWelcome;
+    el('dMain').hidden = showWelcome;
+    el('dHeadRight').style.visibility = showWelcome ? 'hidden' : '';
+
+    // Participant
+    var participant = state.participant || {};
+    setText('dParticipantName', participant.name || '');
+    setText('dParticipantMeta', [participant.reg_no, participant.city].filter(Boolean).join(' · '));
+    var photo = el('dParticipantPhoto');
+    if (photo) {
+      photo.innerHTML = participant.photo
+        ? '<img src="' + esc(participant.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:1.4vmin">'
+        : esc((participant.name || '?').charAt(0));
+    }
+    var participantBox = el('dParticipant');
+    if (participantBox) participantBox.style.display = participant.name ? '' : 'none';
+
+    // Header prize
+    setText('dQuestionNo', state.level > 0 ? 'Question ' + state.level + ' of ' + state.total_levels : '');
+    setText('dAmount', state.prize ? state.prize.current_label : '');
+    var giftEl = el('dAmountGift');
+    if (giftEl) {
+      giftEl.textContent = state.prize && state.prize.gift_name ? '+ ' + state.prize.gift_name : '';
+      giftEl.style.display = state.prize && state.prize.gift_name ? '' : 'none';
+    }
+
+    // Question + options
+    setText('dQuestion', hasQuestion ? state.question.text : '');
+    var media = el('dQuestionMedia');
+    if (media) {
+      if (hasQuestion && state.question.image) {
+        media.src = state.question.image; media.hidden = false;
+      } else { media.hidden = true; media.removeAttribute('src'); }
+    }
+    renderOptions();
+    renderLadder();
+    renderLifelines();
+    renderOverlay();
+    paintTimer();
+  }
+
+  function setText(id, value) {
+    var node = el(id);
+    if (node) node.textContent = value === null || value === undefined ? '' : String(value);
+  }
+
+  function renderOptions() {
+    var box = el('dOptions');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!state.question) return;
+
+    var options = state.question.options || {};
+    var removed = state.question.removed || [];
+    var revealed = state.answer.revealed;
+    // "correct" is null in the payload until the operator reveals the result.
+    var correct = state.answer.correct;
+    var selected = state.answer.selected;
+
+    ['A', 'B', 'C', 'D'].forEach(function (key) {
+      var text = options[key];
+      var node = document.createElement('div');
+      node.className = 'd-option';
+      if (removed.indexOf(key) !== -1 || text === null) node.classList.add('is-removed');
+      if (selected === key && !revealed) node.classList.add('is-selected');
+      if (selected === key && state.answer.locked && !revealed) node.classList.add('is-locked');
+      if (revealed && correct && key === correct) node.classList.add('is-correct');
+      if (revealed && selected === key && correct && key !== correct) node.classList.add('is-wrong');
+      if (revealed && correct && key !== correct && selected !== key) node.classList.add('is-dim');
+
+      node.innerHTML = '<span class="d-option__key">' + key + '</span><span>' + esc(text || '') + '</span>';
+      box.appendChild(node);
+    });
+  }
+
+  function renderLadder() {
+    var box = el('dLadder');
+    if (!box) return;
+    if (!config.showLadder) { box.style.display = 'none'; return; }
+
+    box.innerHTML = '';
+    (state.ladder || []).slice().reverse().forEach(function (level) {
+      var row = document.createElement('div');
+      row.className = 'd-ladder__row' +
+        (level.is_current ? ' is-current' : '') +
+        (level.is_won && !level.is_current ? ' is-won' : '') +
+        (level.guaranteed ? ' is-guaranteed' : '');
+      row.innerHTML =
+        '<span class="d-ladder__no">' + level.level + '</span>' +
+        '<span class="d-ladder__amount">' + esc(level.label) + '</span>';
+      box.appendChild(row);
+    });
+
+    var current = box.querySelector('.is-current');
+    if (current && current.scrollIntoView) {
+      current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  function renderLifelines() {
+    var box = el('dLifelines');
+    if (!box) return;
+    if (!config.showLifelines) { box.style.display = 'none'; return; }
+
+    box.innerHTML = '';
+    (state.lifelines || []).forEach(function (lifeline) {
+      var node = document.createElement('div');
+      node.className = 'd-lifeline' + (lifeline.available ? '' : ' is-used');
+      node.textContent = lifeline.name;
+      box.appendChild(node);
+    });
+  }
+
+  /* --- Overlays ------------------------------------------------------------ */
+  function hideOverlays() {
+    ['dResultOverlay', 'dPollOverlay', 'dExpertOverlay', 'dFinalOverlay'].forEach(function (id) {
+      var node = el(id);
+      if (node) node.hidden = true;
+    });
+  }
+
+  function renderOverlay() {
+    var s = state.state;
+    var finished = state.is_finished;
+
+    if (finished && (s === 'GAME_COMPLETED' || state.status === 'quit' || state.status === 'abandoned')) {
+      showFinal();
+      return;
+    }
+    if (s === 'CORRECT') { showResult('correct'); return; }
+    if (s === 'WRONG') { showResult('wrong'); return; }
+    if (s === 'TIME_UP') { showResult('timeup'); return; }
+    hideOverlays();
+  }
+
+  function showResult(kind) {
+    hideOverlays();
+    var overlay = el('dResultOverlay');
+    if (!overlay) return;
+
+    var icon = kind === 'correct' ? '✓' : (kind === 'wrong' ? '✕' : '⏱');
+    var title = kind === 'correct' ? 'સાચો જવાબ' : (kind === 'wrong' ? 'ખોટો જવાબ' : 'સમય પૂરો');
+    var subtitle = kind === 'correct' ? 'CORRECT ANSWER' : (kind === 'wrong' ? 'WRONG ANSWER' : 'TIME UP');
+
+    overlay.className = 'd-overlay d-overlay--' + kind;
+    setText('dResultIcon', icon);
+    setText('dResultTitle', title);
+    setText('dResultSub', subtitle);
+
+    var detail = el('dResultDetail');
+    if (detail) {
+      var parts = [];
+      if (state.answer.selected) parts.push('Answered: ' + state.answer.selected);
+      if (state.answer.correct) parts.push('Correct: ' + state.answer.correct);
+      detail.textContent = parts.join('  ·  ');
+    }
+
+    var amount = el('dResultAmount');
+    if (amount) {
+      amount.textContent = kind === 'correct'
+        ? (state.prize ? state.prize.won_so_far_label : '')
+        : (state.prize ? state.prize.guaranteed_label : '');
+    }
+    var amountLabel = el('dResultAmountLabel');
+    if (amountLabel) {
+      amountLabel.textContent = kind === 'correct' ? 'Total winnings' : 'Takes home';
+    }
+
+    var gift = el('dResultGift');
+    if (gift) {
+      var giftName = kind === 'correct' && state.prize ? state.prize.gift_name : null;
+      gift.textContent = giftName ? '🎁  ' + giftName : '';
+      gift.style.display = giftName ? '' : 'none';
+    }
+
+    overlay.hidden = false;
+    if (kind === 'correct') { confetti(60); }
+  }
+
+  function showFinal() {
+    hideOverlays();
+    var overlay = el('dFinalOverlay');
+    if (!overlay) return;
+
+    var won = state.prize ? parseFloat(state.prize.final_prize) : 0;
+    setText('dFinalIcon', won > 0 ? '🏆' : '🙏');
+    setText('dFinalTitle', won > 0 ? 'અભિનંદન!' : 'આભાર!');
+    setText('dFinalName', (state.participant && state.participant.name) || '');
+    setText('dFinalAmount', state.prize ? state.prize.final_prize_label : '');
+
+    var gifts = el('dFinalGifts');
+    if (gifts) {
+      var names = (state.gifts_won || []).map(function (g) { return g.name; });
+      gifts.textContent = names.length ? '🎁  ' + names.join('   ·   ') : '';
+      gifts.style.display = names.length ? '' : 'none';
+    }
+
+    overlay.hidden = false;
+    if (won > 0) confetti(120);
+  }
+
+  function showLifelineOverlay(lifeline) {
+    if (lifeline.code === 'audience_poll' && lifeline.result && lifeline.result.percentages) {
+      hideOverlays();
+      var box = el('dPollBars');
+      if (box) {
+        box.innerHTML = '';
+        ['A', 'B', 'C', 'D'].forEach(function (key) {
+          var pct = lifeline.result.percentages[key] || 0;
+          var col = document.createElement('div');
+          col.className = 'd-poll__col';
+          col.innerHTML = '<div class="d-poll__pct">' + pct + '%</div>' +
+            '<div class="d-poll__bar" style="height:0"></div>' +
+            '<div class="d-poll__key">' + key + '</div>';
+          box.appendChild(col);
+          window.setTimeout(function () {
+            col.querySelector('.d-poll__bar').style.height = Math.max(2, pct) + '%';
+          }, 60);
+        });
+      }
+      el('dPollOverlay').hidden = false;
+      window.setTimeout(function () {
+        var node = el('dPollOverlay');
+        if (node) node.hidden = true;
+      }, 9000);
+      return;
+    }
+
+    if (lifeline.code === 'expert_advice' && lifeline.result) {
+      hideOverlays();
+      setText('dExpertName', lifeline.result.expert_name || 'Expert');
+      setText('dExpertAnswer', lifeline.result.suggested_option || '?');
+      setText('dExpertConfidence', (lifeline.result.confidence || 0) + '% confident');
+      setText('dExpertMessage', lifeline.result.message || '');
+      var photo = el('dExpertPhoto');
+      if (photo) {
+        photo.innerHTML = lifeline.result.expert_photo
+          ? '<img src="' + esc(lifeline.result.expert_photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:3vmin">'
+          : '👤';
+      }
+      el('dExpertOverlay').hidden = false;
+      window.setTimeout(function () {
+        var node = el('dExpertOverlay');
+        if (node) node.hidden = true;
+      }, 9000);
+    }
+  }
+
+  /* --- Confetti ------------------------------------------------------------ */
+  function confetti(count) {
+    if (!config.animations) return;
+    var box = el('dConfetti');
+    if (!box) return;
+    var colours = ['#f5a623', '#ffd76e', '#b3141a', '#22c55e', '#ffffff', '#ff8a3d'];
+    for (var i = 0; i < count; i++) {
+      var piece = document.createElement('span');
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.background = colours[Math.floor(Math.random() * colours.length)];
+      piece.style.animationDuration = (2.2 + Math.random() * 2.4) + 's';
+      piece.style.animationDelay = (Math.random() * 0.9) + 's';
+      box.appendChild(piece);
+      (function (node) {
+        window.setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 6000);
+      })(piece);
+    }
+  }
+
+  /* --- Transition detection ------------------------------------------------ */
+  function reactToChange(previousState, previousLevel) {
+    var s = state.state;
+
+    if (state.level !== previousLevel && state.question) { play('question_start'); }
+    if (s === 'TIMER_RUNNING' && previousState !== 'TIMER_RUNNING') { play('timer_start'); }
+    if (s === 'ANSWER_LOCKED' && previousState !== 'ANSWER_LOCKED') { play('answer_lock'); }
+    if (s === 'CORRECT' && previousState !== 'CORRECT') {
+      play('correct_answer');
+      if (state.prize && state.prize.gift_name) { play('prize_won'); }
+    }
+    if (s === 'WRONG' && previousState !== 'WRONG') { play('wrong_answer'); }
+    if (s === 'TIME_UP' && previousState !== 'TIME_UP') { play('game_over'); }
+    if (s === 'GAME_COMPLETED' && previousState !== 'GAME_COMPLETED') {
+      play(state.prize && parseFloat(state.prize.final_prize) > 0 ? 'final_win' : 'game_over');
+    }
+
+    // A newly used lifeline gets its own animation.
+    var signature = (state.lifelines || []).map(function (l) {
+      return l.code + ':' + l.used + ':' + (l.result ? '1' : '0');
+    }).join('|');
+
+    if (signature !== lastLifelineSignature && lastLifelineSignature !== '') {
+      (state.lifelines || []).forEach(function (lifeline) {
+        if (lifeline.result && lastLifelineSignature.indexOf(lifeline.code + ':' + lifeline.used + ':1') === -1) {
+          play('lifeline_used');
+          showLifelineOverlay(lifeline);
+        }
+      });
+    }
+    lastLifelineSignature = signature;
+  }
+
+  /* --- Polling ------------------------------------------------------------- */
+  function poll() {
+    if (polling) return;
+    polling = true;
+
+    fetch(config.endpoint + '?v=' + lastVersion, {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    }).then(function (response) { return response.json(); })
+      .then(function (result) {
+        polling = false;
+        failures = 0;
+        el('dOffline').hidden = true;
+
+        if (!result || !result.success) return;
+
+        var previousState = state.state;
+        var previousLevel = state.level;
+
+        state = result.data;
+        settings = state.settings || settings;
+
+        var changed = state.state_version !== lastVersion;
+        lastVersion = state.state_version;
+
+        render();
+        if (changed) { reactToChange(previousState, previousLevel); }
+      })
+      .catch(function () {
+        polling = false;
+        failures++;
+        if (failures >= 3) { el('dOffline').hidden = false; }
+      })
+      .finally(function () {
+        window.setTimeout(poll, config.pollInterval);
+      });
+  }
+
+  /* --- Full screen --------------------------------------------------------- */
+  var fsButton = el('dFullscreen');
+  if (fsButton) {
+    fsButton.addEventListener('click', function () {
+      if (!document.fullscreenElement) {
+        (document.documentElement.requestFullscreen ||
+         document.documentElement.webkitRequestFullscreen ||
+         function () {}).call(document.documentElement);
+      } else {
+        (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+      }
+    });
+  }
+  document.addEventListener('fullscreenchange', function () {
+    if (fsButton) fsButton.textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+  });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'f' || event.key === 'F') { if (fsButton) fsButton.click(); }
+  });
+
+  var reloadButton = el('dReload');
+  if (reloadButton) reloadButton.addEventListener('click', function () { window.location.reload(); });
+
+  /* --- Start --------------------------------------------------------------- */
+  lastVersion = state.state_version;
+  lastLifelineSignature = (state.lifelines || []).map(function (l) {
+    return l.code + ':' + l.used + ':' + (l.result ? '1' : '0');
+  }).join('|');
+
+  render();
+  window.setInterval(paintTimer, 100);
+  window.setTimeout(poll, 400);
+})();

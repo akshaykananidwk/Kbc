@@ -1,0 +1,33 @@
+# --- Secrets and per-server configuration (never commit these) --------------
+.env
+.env.local
+.env.*.local
+config/local.php
+
+# --- Runtime state -----------------------------------------------------------
+storage/logs/*
+!storage/logs/.gitignore
+storage/cache/*
+!storage/cache/.gitignore
+storage/backups/*
+!storage/backups/.gitignore
+storage/tmp/*
+!storage/tmp/.gitignore
+storage/installed.lock
+
+# --- User uploaded media -----------------------------------------------------
+public/uploads/*/*
+!public/uploads/*/.gitignore
+!public/uploads/.htaccess
+
+# --- Local development -------------------------------------------------------
+# server-router.php is a development helper (php -S). Harmless in production.
+*.log
+*.sql
+*.zip
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+node_modules/
+vendor/

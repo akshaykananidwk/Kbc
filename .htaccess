@@ -1,0 +1,102 @@
+# ==========================================================================
+# Ganpati Bapa Quiz Show - Apache configuration
+# Upload the whole folder to your hosting account and open /install
+# ==========================================================================
+
+# Never list directory contents
+Options -Indexes
+<IfModule mod_autoindex.c>
+    IndexIgnore *
+</IfModule>
+
+DirectoryIndex index.php
+
+# --------------------------------------------------------------------------
+# Clean URLs: send everything that is not a real file/folder to index.php
+# --------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Let real files and folders (assets, uploads) be served directly
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Everything else goes through the front controller
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# --------------------------------------------------------------------------
+# Block direct access to application internals
+# --------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(app|config|database|routes|resources|storage|docs)(/|$) - [F,L]
+    RewriteRule ^(bootstrap|console)\.php$ - [F,L]
+</IfModule>
+
+# Belt and braces for servers without mod_rewrite
+<FilesMatch "^(\.env.*|\.gitignore|composer\.(json|lock)|console\.php|bootstrap\.php|VERSION|.*\.md|.*\.sql|.*\.log|.*\.lock)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Hidden files (except .well-known for SSL validation)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule "(^|/)\.(?!well-known)" - [F,L]
+</IfModule>
+
+# --------------------------------------------------------------------------
+# Security headers
+# --------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header always unset X-Powered-By
+    Header unset Server
+</IfModule>
+
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag expose_php Off
+    php_value upload_max_filesize 32M
+    php_value post_max_size 36M
+    php_value max_execution_time 300
+</IfModule>
+
+# --------------------------------------------------------------------------
+# Caching and compression for static assets
+# --------------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                  "access plus 7 days"
+    ExpiresByType application/javascript    "access plus 7 days"
+    ExpiresByType image/png                 "access plus 30 days"
+    ExpiresByType image/jpeg                "access plus 30 days"
+    ExpiresByType image/webp                "access plus 30 days"
+    ExpiresByType image/svg+xml             "access plus 30 days"
+    ExpiresByType audio/mpeg                "access plus 30 days"
+    ExpiresByType font/woff2                "access plus 30 days"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml
+    AddOutputFilterByType DEFLATE application/javascript application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# API responses must never be cached
+<IfModule mod_headers.c>
+    <FilesMatch "index\.php$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0" env=NO_CACHE
+    </FilesMatch>
+</IfModule>
