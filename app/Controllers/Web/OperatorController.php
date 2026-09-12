@@ -63,6 +63,17 @@ final class OperatorController extends Controller
         ]);
     }
 
+    /** Fastest Finger First control screen. */
+    public function fastestFinger(Request $request): Response
+    {
+        return $this->view('operator.fff', [
+            'participants' => (new ParticipantRepository())->selectable(),
+            'enabled'      => SettingsService::bool('fff_enabled', true),
+            'defaultTime'  => SettingsService::int('fff_time_limit', 25),
+            'history'      => \App\Services\FastestFingerService::make()->history(15),
+        ]);
+    }
+
     /** Post-game report shown to the operator. */
     public function summary(Request $request): Response
     {

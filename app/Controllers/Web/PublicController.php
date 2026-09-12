@@ -153,11 +153,71 @@ final class PublicController extends Controller
         ]);
     }
 
+    /** The contender's phone page for a Fastest Finger round. */
+    public function fff(Request $request): Response
+    {
+        $roundId = $request->intParam('id');
+        $service = \App\Services\FastestFingerService::make();
+
+        $round = null;
+        try {
+            $round = $service->state($roundId);
+        } catch (\App\Core\Exceptions\HttpException) {
+            $round = null;
+        }
+
+        return $this->view('public.fff', [
+            'round'    => $round,
+            'roundId'  => $roundId,
+            'siteName' => SettingsService::string('site_name', 'Ganpati Bapa Quiz Show'),
+        ]);
+    }
+
+    /** Records a contender's ordering, identified by their access code. */
+    public function submitFff(Request $request): Response
+    {
+        $roundId = $request->int('round_id', 0);
+        $code = $request->string('access_code');
+        $order = $request->array('order');
+        if ($order === []) {
+            $order = str_split(strtoupper($request->string('order_string')));
+        }
+
+        try {
+            $state = \App\Services\FastestFingerService::make()->submitByCode($roundId, $code, $order);
+        } catch (\App\Core\Exceptions\HttpException $e) {
+            return $this->fail($e->getMessage(), $e->statusCode());
+        }
+
+        // The public state carries no answer, so this is safe to return.
+        return $this->ok('Your answer has been recorded.', [
+            'answered'   => $state['answered'],
+            'contenders' => count($state['contenders']),
+        ]);
+    }
+
+    /** Confirms a code belongs to this round, so the phone can greet by name. */
+    public function checkFffCode(Request $request): Response
+    {
+        $roundId = $request->int('round_id', 0);
+        $contender = \App\Services\FastestFingerService::make()
+            ->contenderByCode($roundId, $request->string('access_code'));
+
+        if ($contender === null) {
+            return $this->fail('That code is not valid for this round.', 404);
+        }
+
+        return $this->ok('Code accepted.', [
+            'name'      => (string) $contender['name'],
+            'answered'  => $contender['submitted_at'] !== null,
+        ]);
+    }
+
     /** Serves a QR code as an SVG for any allowed target. */
     public function qr(Request $request): Response
     {
         $target = $request->string('for', 'register');
-        $allowed = ['register', 'vote', 'display'];
+        $allowed = ['register', 'vote', 'display', 'fff'];
         if (!in_array($target, $allowed, true)) {
             return Response::text('Unknown QR target.', 404);
         }
@@ -168,6 +228,12 @@ final class PublicController extends Controller
                 return Response::text('A valid poll code is required.', 422);
             }
             $url = $this->absoluteUrl('/vote/' . $code);
+        } elseif ($target === 'fff') {
+            $round = $request->int('round', 0);
+            if ($round < 1) {
+                return Response::text('A valid round id is required.', 422);
+            }
+            $url = $this->absoluteUrl('/fff/' . $round);
         } elseif ($target === 'display') {
             $url = $this->absoluteUrl('/display');
         } else {

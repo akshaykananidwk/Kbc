@@ -65,6 +65,19 @@ $router->group('/api/lifelines', ['installed', 'operator', 'noindex'], function 
 });
 
 // ---------------------------------------------------------------------
+// /api/fff - Fastest Finger First, operator controlled
+// ---------------------------------------------------------------------
+$router->group('/api/fff', ['installed', 'operator', 'noindex'], function (Router $router): void {
+    $router->get('/state', 'App\Controllers\Api\FastestFingerApiController@state');
+    $router->get('/history', 'App\Controllers\Api\FastestFingerApiController@history');
+    $router->post('/create', 'App\Controllers\Api\FastestFingerApiController@create', ['csrf']);
+    $router->post('/start', 'App\Controllers\Api\FastestFingerApiController@start', ['csrf']);
+    $router->post('/submit', 'App\Controllers\Api\FastestFingerApiController@submit', ['csrf']);
+    $router->post('/close', 'App\Controllers\Api\FastestFingerApiController@close', ['csrf']);
+    $router->post('/cancel', 'App\Controllers\Api\FastestFingerApiController@cancel', ['csrf']);
+});
+
+// ---------------------------------------------------------------------
 // /api/questions - admin only
 // ---------------------------------------------------------------------
 $router->group('/api/questions', ['installed', 'admin', 'noindex'], function (Router $router): void {

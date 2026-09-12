@@ -117,3 +117,11 @@ body {
 .p-foot { text-align: center; color: rgba(255,255,255,.7); font-size: .78rem; margin-top: .6rem; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* --- Fastest Finger ordering ---------------------------------------------- */
+.p-option__pos {
+  margin-left: auto; min-width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 900; font-size: 1.05rem;
+  color: #fff; background: transparent;
+}
+.p-option.is-chosen .p-option__pos { background: var(--p-primary); }

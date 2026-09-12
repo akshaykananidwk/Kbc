@@ -178,6 +178,24 @@ $config = [
   <div class="d-overlay__gift" id="dFinalGifts"></div>
 </div>
 
+<!-- Fastest Finger First -->
+<div class="d-overlay d-overlay--fff" id="dFffOverlay" hidden>
+  <div class="d-fff">
+    <div class="d-fff__badge">⚡ ફાસ્ટેસ્ટ ફિંગર ફર્સ્ટ</div>
+    <div class="d-fff__question" id="dFffQuestion"></div>
+    <div class="d-fff__items" id="dFffItems"></div>
+
+    <div class="d-fff__timer">
+      <div class="d-fff__clock" id="dFffClock">—</div>
+      <div class="d-fff__bar"><div class="d-fff__fill" id="dFffFill"></div></div>
+      <div class="d-fff__meta"><span id="dFffAnswered">0</span> / <span id="dFffTotal">0</span> એ જવાબ આપ્યો</div>
+    </div>
+
+    <div class="d-fff__board" id="dFffBoard"></div>
+    <div class="d-fff__winner" id="dFffWinner" hidden></div>
+  </div>
+</div>
+
 <!-- Big cheque overlay -->
 <div class="d-overlay" id="dChequeOverlay" hidden>
   <div class="d-cheque">

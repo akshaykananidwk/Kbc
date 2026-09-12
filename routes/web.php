@@ -36,6 +36,9 @@ $router->get('/qr', 'App\Controllers\Web\PublicController@qr', ['installed', 'no
 $router->get('/vote/{code:[A-Za-z0-9]{4,12}}', 'App\Controllers\Web\PublicController@vote', ['installed', 'noindex']);
 $router->get('/vote/{code:[A-Za-z0-9]{4,12}}/status', 'App\Controllers\Web\PublicController@voteStatus', ['installed', 'noindex']);
 $router->post('/vote', 'App\Controllers\Web\PublicController@castVote', ['installed', 'throttle:40,60', 'noindex']);
+$router->get('/fff/{id:\d+}', 'App\Controllers\Web\PublicController@fff', ['installed', 'noindex']);
+$router->post('/fff/check', 'App\Controllers\Web\PublicController@checkFffCode', ['installed', 'throttle:40,60', 'noindex']);
+$router->post('/fff/submit', 'App\Controllers\Web\PublicController@submitFff', ['installed', 'throttle:40,60', 'noindex']);
 $router->get('/register', 'App\Controllers\Web\PublicController@register', ['installed', 'noindex']);
 $router->post('/register', 'App\Controllers\Web\PublicController@storeRegistration', ['installed', 'throttle:12,60', 'noindex']);
 
@@ -162,6 +165,7 @@ $router->group('/admin', ['installed', 'auth', 'noindex'], function (Router $rou
 $router->group('/operator', ['installed', 'operator', 'noindex'], function (Router $router): void {
     $router->get('/', 'App\Controllers\Web\OperatorController@index');
     $router->get('/setup', 'App\Controllers\Web\OperatorController@setup');
+    $router->get('/fff', 'App\Controllers\Web\OperatorController@fastestFinger');
     $router->get('/summary/{id:\d+}', 'App\Controllers\Web\OperatorController@summary');
 });
 

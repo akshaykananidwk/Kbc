@@ -43,6 +43,7 @@ final class DisplayApiController extends Controller
 
         $state['settings'] = $this->displaySettings();
         $state['idle'] = $this->idleContent($state);
+        $state['fff'] = $this->fastestFinger();
 
         return Response::apiSuccess('Display state.', $state)
             ->withHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -54,7 +55,25 @@ final class DisplayApiController extends Controller
         $state = GameService::make()->displayState();
         $state['settings'] = $this->displaySettings();
         $state['idle'] = $this->idleContent($state);
+        $state['fff'] = $this->fastestFinger();
         return Response::apiSuccess('Display snapshot.', $state);
+    }
+
+    /**
+     * The Fastest Finger round for the audience screen.
+     *
+     * SECURITY: the service only includes the correct order once the round
+     * is closed, and never marks an individual answer right or wrong before
+     * then, so the display cannot leak the answer mid-round.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function fastestFinger(): ?array
+    {
+        if (!SettingsService::bool('fff_enabled', true)) {
+            return null;
+        }
+        return \App\Services\FastestFingerService::make()->currentState();
     }
 
     /**

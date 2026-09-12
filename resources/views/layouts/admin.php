@@ -47,8 +47,11 @@ $isAdmin = ($user['role_slug'] ?? '') === 'admin';
       </a>
 
       <div class="sidebar__group">Live Show</div>
-      <a class="sidebar__link <?= active_when('/operator') ?>" href="<?= e(url('/operator')) ?>">
+      <a class="sidebar__link <?= active_when('/operator', true) ?>" href="<?= e(url('/operator')) ?>">
         <span class="sidebar__icon">▶</span> Operator Screen
+      </a>
+      <a class="sidebar__link <?= active_when('/operator/fff') ?>" href="<?= e(url('/operator/fff')) ?>">
+        <span class="sidebar__icon">⚡</span> Fastest Finger
       </a>
       <a class="sidebar__link" href="<?= e(url('/display')) ?>" target="_blank" rel="noopener">
         <span class="sidebar__icon">▣</span> Display Screen

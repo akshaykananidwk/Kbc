@@ -451,15 +451,131 @@
     });
   }
 
+  /* --- Fastest Finger First ------------------------------------------------ */
+  var fffSyncedAt = 0;
+  var fffRemaining = 0;
+  var fffSignature = '';
+
+  function renderFff() {
+    var overlay = el('dFffOverlay');
+    if (!overlay) return false;
+
+    var fff = state.fff;
+    if (!fff || fff.status === 'pending') {
+      // A pending round is not yet on air - keep the normal screen.
+      if (!fff) { overlay.hidden = true; fffSignature = ''; return false; }
+    }
+
+    overlay.hidden = false;
+
+    var lines = String(fff.question || '').split('\n');
+    setText('dFffQuestion', lines[0] || '');
+
+    var signature = fff.id + '|' + fff.status + '|' + fff.state_version;
+    if (signature !== fffSignature) {
+      fffSignature = signature;
+
+      var itemBox = el('dFffItems');
+      if (itemBox) {
+        itemBox.innerHTML = '';
+        var answerOrder = fff.correct_order ? fff.correct_order.split('') : [];
+
+        lines.slice(1).forEach(function (line) {
+          var match = /^\s*([ABCD])[\.\)]\s*(.+)$/.exec(line);
+          if (!match) return;
+          var key = match[1].toUpperCase();
+          var position = answerOrder.indexOf(key);
+
+          var node = document.createElement('div');
+          node.className = 'd-fff__item' + (position !== -1 ? ' is-answer' : '');
+          node.innerHTML =
+            '<span class="d-fff__item-key">' + key + '</span>' +
+            '<span>' + esc(match[2]) + '</span>' +
+            (position !== -1 ? '<span class="d-fff__item-pos">' + (position + 1) + '</span>' : '');
+          itemBox.appendChild(node);
+        });
+      }
+    }
+
+    setText('dFffAnswered', fff.answered);
+    setText('dFffTotal', (fff.contenders || []).length);
+
+    var board = el('dFffBoard');
+    if (board) {
+      board.innerHTML = '';
+      (fff.contenders || []).forEach(function (c) {
+        var node = document.createElement('div');
+        var classes = 'd-fff__player';
+        if (c.answered) classes += ' is-answered';
+        if (c.is_correct === true) classes += ' is-correct';
+        if (c.is_correct === false) classes += ' is-wrong';
+        node.className = classes;
+        node.innerHTML =
+          (c.rank ? '<span class="d-fff__player-rank">' + c.rank + '</span>' : '') +
+          '<span>' + esc(c.name) + '</span>' +
+          (c.answered ? '<span class="d-fff__player-time">' + esc(c.time_label) + '</span>' : '');
+        board.appendChild(node);
+      });
+    }
+
+    var winnerBox = el('dFffWinner');
+    if (winnerBox) {
+      if (fff.status === 'closed' && fff.winner) {
+        winnerBox.innerHTML =
+          '<div class="d-fff__winner-label">હૉટ સીટ પર જાય છે</div>' +
+          '<div class="d-fff__winner-name">' + esc(fff.winner.name) + '</div>' +
+          '<div class="d-fff__winner-time">' + esc(fff.winner.time_label) + '</div>';
+        winnerBox.hidden = false;
+      } else if (fff.status === 'closed') {
+        winnerBox.innerHTML = '<div class="d-fff__winner-label">કોઈએ સાચો ક્રમ આપ્યો નહીં</div>';
+        winnerBox.hidden = false;
+      } else {
+        winnerBox.hidden = true;
+      }
+    }
+
+    fffRemaining = fff.remaining_ms;
+    fffSyncedAt = Date.now();
+    return true;
+  }
+
+  function paintFffClock() {
+    var overlay = el('dFffOverlay');
+    if (!overlay || overlay.hidden || !state.fff) return;
+
+    var left = state.fff.status === 'running'
+      ? Math.max(0, fffRemaining - (Date.now() - fffSyncedAt))
+      : fffRemaining;
+
+    var clock = el('dFffClock');
+    if (clock) {
+      clock.textContent = state.fff.status === 'pending' ? 'તૈયાર' : Math.ceil(left / 1000);
+      clock.className = 'd-fff__clock' + (left <= 5000 && state.fff.status === 'running' ? ' is-danger' : '');
+    }
+    var fill = el('dFffFill');
+    if (fill && state.fff.total_ms > 0) {
+      fill.style.width = ((left / state.fff.total_ms) * 100) + '%';
+    }
+  }
+
   /* --- Overlays ------------------------------------------------------------ */
   function hideOverlays() {
-    ['dResultOverlay', 'dPollOverlay', 'dExpertOverlay', 'dFinalOverlay', 'dChequeOverlay'].forEach(function (id) {
+    ['dResultOverlay', 'dPollOverlay', 'dExpertOverlay', 'dFinalOverlay', 'dChequeOverlay', 'dFffOverlay'].forEach(function (id) {
       var node = el(id);
       if (node) node.hidden = true;
     });
   }
 
   function renderOverlay() {
+    // A Fastest Finger round owns the whole screen while it runs.
+    if (state.fff && state.fff.status !== 'pending') {
+      hideOverlays();
+      renderFff();
+      return;
+    }
+    var fffOverlay = el('dFffOverlay');
+    if (fffOverlay) { fffOverlay.hidden = true; }
+
     var s = state.state;
     var finished = state.is_finished;
 
@@ -773,5 +889,6 @@
   render();
   window.setInterval(paintTimer, 100);
   window.setInterval(paintVoteCountdown, 500);
+  window.setInterval(paintFffClock, 150);
   window.setTimeout(poll, 400);
 })();
