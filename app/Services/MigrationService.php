@@ -94,7 +94,24 @@ final class MigrationService
                 $migration->up($this->db);
             } catch (\Throwable $e) {
                 Logger::error('Migration failed: ' . $name, ['error' => $e->getMessage()]);
-                throw new RuntimeException('Migration "' . $name . '" failed: ' . $e->getMessage(), 0, $e);
+
+                // MySQL commits DDL immediately, so a migration that created a
+                // table before failing cannot be undone by a transaction.
+                // Give the migration its own down() to clean up after itself.
+                $cleanup = 'no cleanup was attempted';
+                try {
+                    $migration->down($this->db);
+                    $cleanup = 'its down() ran to clean up';
+                } catch (\Throwable $cleanupError) {
+                    $cleanup = 'its down() also failed: ' . $cleanupError->getMessage();
+                    Logger::error('Migration cleanup failed: ' . $name, ['error' => $cleanupError->getMessage()]);
+                }
+
+                throw new RuntimeException(
+                    'Migration "' . $name . '" failed: ' . $e->getMessage() . ' (' . $cleanup . ')',
+                    0,
+                    $e
+                );
             }
 
             $this->db->insert(self::TABLE, [
