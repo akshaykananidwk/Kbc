@@ -29,6 +29,17 @@ $router->get('/', 'App\Controllers\Web\HomeController@index', ['installed']);
 $router->get('/robots.txt', 'App\Controllers\Web\HomeController@robots');
 
 // ---------------------------------------------------------------------
+// Audience pages reached from a QR code on the display.
+// Unauthenticated by necessity, deliberately narrow, and rate limited.
+// ---------------------------------------------------------------------
+$router->get('/qr', 'App\Controllers\Web\PublicController@qr', ['installed', 'noindex']);
+$router->get('/vote/{code:[A-Za-z0-9]{4,12}}', 'App\Controllers\Web\PublicController@vote', ['installed', 'noindex']);
+$router->get('/vote/{code:[A-Za-z0-9]{4,12}}/status', 'App\Controllers\Web\PublicController@voteStatus', ['installed', 'noindex']);
+$router->post('/vote', 'App\Controllers\Web\PublicController@castVote', ['installed', 'throttle:40,60', 'noindex']);
+$router->get('/register', 'App\Controllers\Web\PublicController@register', ['installed', 'noindex']);
+$router->post('/register', 'App\Controllers\Web\PublicController@storeRegistration', ['installed', 'throttle:12,60', 'noindex']);
+
+// ---------------------------------------------------------------------
 // Authentication
 // ---------------------------------------------------------------------
 $router->get('/admin/login', 'App\Controllers\Admin\AuthController@showLogin', ['installed', 'guest', 'noindex']);

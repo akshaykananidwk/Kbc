@@ -123,6 +123,29 @@ $config = [
     </div>
 
     <div class="op-panel">
+      <div class="op-panel__head">
+        <span>Audience voting</span>
+        <span id="opPollStatus">closed</span>
+      </div>
+      <div class="op-panel__body">
+        <div class="op-poll" id="opPollBox">
+          <div class="op-poll__code" id="opPollCode">—</div>
+          <div class="op-poll__meta">
+            <span id="opPollVotes">0</span> votes &middot; <span id="opPollSeconds">0</span>s left
+          </div>
+        </div>
+        <div class="op-controls mt-2">
+          <button type="button" class="op-btn op-btn--blue" id="btnOpenPoll">Open voting</button>
+          <button type="button" class="op-btn op-btn--warn" id="btnClosePoll">Close voting</button>
+        </div>
+        <p class="small" style="color:#a8907f;margin:.6rem 0 0">
+          Open voting, let the audience scan the QR on the TV, then use the
+          Audience Poll lifeline — it will use the real votes.
+        </p>
+      </div>
+    </div>
+
+    <div class="op-panel">
       <div class="op-panel__head"><span>Prize ladder</span></div>
       <div class="op-panel__body"><div class="op-ladder" id="opLadder"></div></div>
     </div>

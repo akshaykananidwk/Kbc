@@ -10,6 +10,7 @@ use App\Repositories\GiftRepository;
 use App\Repositories\LifelineRepository;
 use App\Repositories\PrizeLevelRepository;
 use App\Repositories\QuestionRepository;
+use App\Services\AudiencePollService;
 use RuntimeException;
 
 /**
@@ -827,7 +828,7 @@ final class GameService
 
         $payload = match ($code) {
             'fifty_fifty'   => $this->buildFiftyFifty($question, $config),
-            'audience_poll' => $this->buildAudiencePoll($question, $config),
+            'audience_poll' => $this->buildAudiencePoll($question, $config, $gameId),
             'expert_advice' => $this->buildExpertAdvice($question, $config),
             'skip_question' => ['skipped' => true],
             default         => [],
@@ -899,12 +900,26 @@ final class GameService
      * @param array<string,mixed> $config
      * @return array<string,mixed>
      */
-    private function buildAudiencePoll(array $question, array $config): array
+    private function buildAudiencePoll(array $question, array $config, int $gameId = 0): array
     {
         $mode = (string) ($config['mode'] ?? 'realistic');
         $correct = (string) $question['correct_option'];
 
         $removed = is_array($config['_removed'] ?? null) ? $config['_removed'] : [];
+
+        // Real votes from the audience always beat a simulated poll.
+        if ($gameId > 0 && SettingsService::bool('audience_poll_live', true)) {
+            $polls = AudiencePollService::make($this->db);
+            $open = $polls->openForGame($gameId);
+            if ($open !== null) {
+                $live = $polls->results((int) $open['id'], $removed);
+                if ($live !== null) {
+                    $live['code'] = $open['code'];
+                    return $live;
+                }
+            }
+            // Fall through to the simulated poll if nobody voted.
+        }
 
         if ($mode === 'manual') {
             $manual = is_array($config['manual_percentages'] ?? null) ? $config['manual_percentages'] : [];
@@ -993,6 +1008,43 @@ final class GameService
             'confidence'       => $confidence,
             'message'          => (string) ($config['message'] ?? ''),
         ];
+    }
+
+    /**
+     * Open live audience voting for the question on air.
+     *
+     * @return array<string,mixed>
+     */
+    public function openAudiencePoll(int $gameId): array
+    {
+        $game = $this->mustFind($gameId);
+        $this->assertQuestionActive($game);
+
+        $poll = AudiencePollService::make($this->db)->open(
+            $gameId,
+            (int) $game['current_question_id'],
+            (int) $game['current_level']
+        );
+
+        $this->games->bumpVersion($gameId);
+        $this->games->logEvent($gameId, 'poll.opened', (string) $game['state'], (int) $game['current_level'], [
+            'code' => $poll['code'] ?? '',
+        ]);
+
+        return $this->state($gameId, true);
+    }
+
+    /** Close voting early. */
+    public function closeAudiencePoll(int $gameId): array
+    {
+        $polls = AudiencePollService::make($this->db);
+        $open = $polls->openForGame($gameId);
+        if ($open !== null) {
+            $polls->close((int) $open['id']);
+            $this->games->bumpVersion($gameId);
+            $this->games->logEvent($gameId, 'poll.closed', null, null, ['code' => $open['code']]);
+        }
+        return $this->state($gameId, true);
     }
 
     /** @return array<int,string> Options removed by a 50:50 on this question. */
@@ -1125,6 +1177,7 @@ final class GameService
                 'explanation'=> $revealed ? (string) ($question['explanation'] ?? '') : null,
             ],
 
+            'poll'      => $this->pollState($gameIdInt),
             'lifelines' => $this->lifelineState($gameIdInt, (int) ($question['id'] ?? 0)),
             'ladder'    => $this->ladderState($game),
             'gifts_won' => $this->games->giftsWon($gameIdInt),
@@ -1180,6 +1233,7 @@ final class GameService
                 'final_prize' => 0.0, 'final_prize_label' => SettingsService::money(0),
                 'is_guaranteed_level' => false, 'gift_name' => null, 'gift_image' => '',
             ],
+            'poll'          => null,
             'lifelines'     => $this->lifelineState(0, 0),
             'ladder'        => $this->ladderState(null),
             'gifts_won'     => [],
@@ -1200,6 +1254,30 @@ final class GameService
             $visible[$key] = in_array($key, $removed, true) ? null : ($options[$key] ?? '');
         }
         return $visible;
+    }
+
+    /**
+     * Live audience voting status for the display and the operator.
+     * Never includes individual votes - only the code and the count.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function pollState(int $gameId): ?array
+    {
+        if ($gameId === 0 || !SettingsService::bool('audience_poll_live', true)) {
+            return null;
+        }
+        $open = AudiencePollService::make($this->db)->openForGame($gameId);
+        if ($open === null) {
+            return null;
+        }
+        return [
+            'code'        => $open['code'],
+            'status'      => $open['status'],
+            'closes_in'   => $open['closes_in'],
+            'total_votes' => $open['total_votes'],
+            'qr_url'      => \App\Core\Application::url('/qr?for=vote&code=' . urlencode((string) $open['code'])),
+        ];
     }
 
     /** @return array<int,array<string,mixed>> */

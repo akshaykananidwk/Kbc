@@ -11,6 +11,39 @@ $view->start('content');
   </div>
 </div>
 
+<?php if (setting('public_registration', true)): ?>
+<div class="card">
+  <div class="card__head">
+    <h2 class="card__title">Self-registration QR</h2>
+    <span class="badge badge--ok">open</span>
+  </div>
+  <div class="card__body">
+    <div class="flex" style="gap:1.2rem;align-items:center">
+      <img src="<?= e(url('/qr?for=register&scale=6')) ?>" alt="Registration QR code"
+           style="width:160px;height:160px;background:#fff;border-radius:12px;padding:6px;border:1px solid var(--ink-100)">
+      <div style="flex:1;min-width:220px">
+        <p class="mb-1">
+          Print this code or show it on a screen at the venue. People scan it,
+          fill in their name and mobile, and appear in this list straight away
+          with a registration number.
+        </p>
+        <p class="small muted mb-1">
+          Link: <code><?= e(url('/register')) ?></code>
+        </p>
+        <div class="btn-row">
+          <a class="btn btn--ghost btn--sm" href="<?= e(url('/register')) ?>" target="_blank" rel="noopener">Open the form</a>
+          <a class="btn btn--ghost btn--sm" href="<?= e(url('/qr?for=register&scale=12')) ?>" target="_blank" rel="noopener">Large QR for printing</a>
+          <button type="button" class="btn btn--ghost btn--sm" data-copy="<?= e(url('/register')) ?>">Copy link</button>
+        </div>
+        <p class="small muted mt-1 mb-0">
+          Switch this off any time in Settings → General → Allow Public QR Registration.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <div class="card">
   <div class="card__body">
     <form method="get" action="<?= e(url('/admin/participants')) ?>" class="filters">

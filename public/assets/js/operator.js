@@ -206,6 +206,7 @@
     renderOptions(question, privateData);
     renderAnswerKey(question, privateData);
     renderLifelines();
+    renderPoll();
     renderLadder();
     renderControls();
     paintTimer();
@@ -305,6 +306,23 @@
       });
       box.appendChild(button);
     });
+  }
+
+  function renderPoll() {
+    var poll = state.poll;
+    var statusEl = document.getElementById('opPollStatus');
+    var isOpen = !!(poll && poll.status === 'open');
+
+    setText('opPollCode', isOpen ? poll.code : '—');
+    setText('opPollVotes', isOpen ? poll.total_votes : 0);
+    setText('opPollSeconds', isOpen ? poll.closes_in : 0);
+    if (statusEl) {
+      statusEl.textContent = isOpen ? 'OPEN' : 'closed';
+      statusEl.style.color = isOpen ? '#22c55e' : '#a8907f';
+    }
+
+    enable('btnOpenPoll', state.has_game && !!state.question && !state.answer.revealed && !state.is_finished && !isOpen);
+    enable('btnClosePoll', isOpen);
   }
 
   function renderLadder() {
@@ -407,6 +425,8 @@
     if (!window.confirm('RESET this game?\n\nAll answers, lifelines and questions for this game are cleared and it starts again from the beginning.\nThe audit log is kept.\n\nThis cannot be undone. Continue?')) return;
     post('/api/game/reset', { start_new: false });
   });
+  bind('btnOpenPoll', function () { post('/api/game/poll/open', {}); });
+  bind('btnClosePoll', function () { post('/api/game/poll/close', {}); });
   bind('btnToggleAnswer', function () {
     answerVisible = !answerVisible;
     var button = document.getElementById('btnToggleAnswer');

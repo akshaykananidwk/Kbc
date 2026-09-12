@@ -134,6 +134,20 @@ $config = [
     <?php if ($showLifelines): ?>
       <div class="d-lifelines" id="dLifelines"></div>
     <?php endif; ?>
+
+    <!-- Live audience voting: shown only while a poll is open -->
+    <div class="d-vote" id="dVotePanel" hidden>
+      <div class="d-vote__qr" id="dVoteQr"></div>
+      <div class="d-vote__body">
+        <div class="d-vote__title">તમારો મત આપો &middot; Vote now</div>
+        <div class="d-vote__code" id="dVoteCode"></div>
+        <div class="d-vote__meta">
+          <span id="dVoteCount">0</span> મત &middot;
+          <span id="dVoteSeconds">0</span>s બાકી
+        </div>
+        <div class="d-vote__bar"><div class="d-vote__fill" id="dVoteFill"></div></div>
+      </div>
+    </div>
   </div>
 
   <?php if ($showLadder): ?>

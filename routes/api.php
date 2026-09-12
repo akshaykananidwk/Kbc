@@ -50,6 +50,8 @@ $router->group('/api/game', ['installed', 'operator', 'noindex'], function (Rout
     $router->post('/end', 'App\Controllers\Api\GameApiController@end', ['csrf']);
     $router->post('/reset', 'App\Controllers\Api\GameApiController@reset', ['csrf']);
     $router->post('/complete', 'App\Controllers\Api\GameApiController@complete', ['csrf']);
+    $router->post('/poll/open', 'App\Controllers\Api\GameApiController@openPoll', ['csrf']);
+    $router->post('/poll/close', 'App\Controllers\Api\GameApiController@closePoll', ['csrf']);
 });
 
 $router->group('/api/operator', ['installed', 'operator', 'noindex'], function (Router $router): void {

@@ -191,3 +191,14 @@
   .op-btn { min-height: 62px; font-size: .95rem; }
   .op-option { min-height: 66px; }
 }
+
+/* --- Audience voting panel -------------------------------------------------- */
+.op-poll {
+  background: #32241d; border: 1px solid #46332a; border-radius: 10px;
+  padding: .8rem; text-align: center;
+}
+.op-poll__code {
+  font-size: 1.9rem; font-weight: 900; letter-spacing: .18em;
+  font-family: ui-monospace, Menlo, Consolas, monospace; color: #ffd76e; line-height: 1.2;
+}
+.op-poll__meta { font-size: .8rem; color: #a8907f; margin-top: .25rem; }

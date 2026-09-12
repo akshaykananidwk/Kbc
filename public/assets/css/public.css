@@ -1,0 +1,119 @@
+/* ==========================================================================
+   Phone-facing pages: audience voting and self registration.
+   Big targets, one thumb, works on a cheap handset over patchy 4G.
+   ========================================================================== */
+
+:root {
+  --p-primary: #b3141a;
+  --p-secondary: #f5a623;
+  --p-accent: #ffd76e;
+  --p-ink: #1c1512;
+  --p-muted: #7a6659;
+  --p-line: #e6dcd2;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0; min-height: 100vh;
+  font-family: "Noto Sans Gujarati", "Noto Sans Devanagari", -apple-system,
+               BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--p-ink);
+  background:
+    radial-gradient(900px 420px at 50% -120px, rgba(245,166,35,.34), transparent 62%),
+    linear-gradient(165deg, #7d0d11 0%, #4c080b 100%);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 1rem .9rem 2.4rem;
+}
+
+.p-shell { width: 100%; max-width: 460px; }
+
+.p-head { text-align: center; color: #fff; padding: 1rem 0 1.3rem; }
+.p-head__mark {
+  width: 66px; height: 66px; margin: 0 auto .7rem; border-radius: 20px; overflow: hidden;
+  background: linear-gradient(140deg, var(--p-secondary), var(--p-accent));
+  color: #6d0b10; display: grid; place-items: center; font-size: 1.9rem; font-weight: 900;
+  box-shadow: 0 10px 26px rgba(0,0,0,.35);
+}
+.p-head__mark img { width: 100%; height: 100%; object-fit: cover; }
+.p-head__title { font-size: 1.3rem; font-weight: 800; margin: 0; line-height: 1.2; }
+.p-head__sub { font-size: .88rem; opacity: .82; margin: .25rem 0 0; }
+
+.p-card {
+  background: #fffdf9; border-radius: 18px; padding: 1.2rem 1.1rem;
+  box-shadow: 0 16px 40px rgba(0,0,0,.28); margin-bottom: 1rem;
+}
+.p-card__title { font-size: 1.05rem; font-weight: 800; margin: 0 0 .3rem; }
+.p-card__sub { font-size: .88rem; color: var(--p-muted); margin: 0 0 1rem; }
+
+/* --- Vote buttons ---------------------------------------------------------- */
+.p-options { display: grid; gap: .7rem; }
+.p-option {
+  display: flex; align-items: center; gap: .85rem; width: 100%;
+  padding: 1rem .95rem; border-radius: 14px; cursor: pointer;
+  background: #fff; border: 2px solid var(--p-line); color: var(--p-ink);
+  font: inherit; font-size: 1.02rem; font-weight: 600; text-align: left;
+  min-height: 66px; transition: transform .08s, border-color .15s, background .15s;
+}
+.p-option:active { transform: scale(.985); }
+.p-option__key {
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: 11px;
+  background: #f4ece3; display: grid; place-items: center;
+  font-weight: 900; font-size: 1.05rem; color: var(--p-muted);
+}
+.p-option.is-chosen { border-color: var(--p-primary); background: #fff5f5; }
+.p-option.is-chosen .p-option__key { background: var(--p-primary); color: #fff; }
+.p-option:disabled { opacity: .5; cursor: not-allowed; }
+
+/* --- Status --------------------------------------------------------------- */
+.p-status {
+  margin-top: 1rem; padding: .85rem 1rem; border-radius: 12px;
+  font-size: .92rem; font-weight: 600; text-align: center;
+}
+.p-status--ok { background: #dcfce7; color: #14532d; }
+.p-status--wait { background: #fef3c7; color: #78350f; }
+.p-status--bad { background: #fee2e2; color: #7f1d1d; }
+
+.p-countdown {
+  display: flex; align-items: baseline; justify-content: center; gap: .4rem;
+  font-size: 2.4rem; font-weight: 900; color: var(--p-primary); margin: .3rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.p-countdown small { font-size: .85rem; font-weight: 700; color: var(--p-muted); }
+
+.p-bar { height: 8px; border-radius: 999px; background: var(--p-line); overflow: hidden; margin-top: .6rem; }
+.p-bar__fill { height: 100%; background: linear-gradient(90deg, #22c55e, #fbbf24, #ef4444); transition: width .4s linear; }
+
+/* --- Form ----------------------------------------------------------------- */
+.p-field { margin-bottom: .9rem; }
+.p-label { display: block; font-weight: 700; font-size: .88rem; margin-bottom: .35rem; }
+.p-input {
+  width: 100%; padding: .85rem .9rem; font: inherit; font-size: 16px;
+  border: 2px solid var(--p-line); border-radius: 12px; background: #fff; min-height: 52px;
+}
+.p-input:focus { outline: none; border-color: var(--p-secondary); box-shadow: 0 0 0 4px rgba(245,166,35,.2); }
+.p-input.has-error { border-color: #b91c1c; }
+.p-error { color: #b91c1c; font-size: .82rem; font-weight: 600; margin-top: .3rem; }
+.p-hp { position: absolute; left: -9999px; opacity: 0; height: 0; width: 0; }
+
+.p-btn {
+  width: 100%; padding: 1rem; border: none; border-radius: 14px;
+  background: var(--p-primary); color: #fff; font: inherit; font-size: 1.05rem;
+  font-weight: 800; cursor: pointer; min-height: 58px;
+}
+.p-btn:active { transform: translateY(1px); }
+.p-btn:disabled { opacity: .55; cursor: not-allowed; }
+.p-btn--gold { background: linear-gradient(135deg, var(--p-secondary), #d97706); color: #3b2503; }
+
+/* --- Success -------------------------------------------------------------- */
+.p-done { text-align: center; padding: 1rem 0; }
+.p-done__icon { font-size: 3.4rem; line-height: 1; }
+.p-done__reg {
+  display: inline-block; margin-top: .7rem; padding: .7rem 1.4rem; border-radius: 999px;
+  background: var(--p-primary); color: #fff; font-size: 1.5rem; font-weight: 900;
+  letter-spacing: .06em; font-family: ui-monospace, Menlo, monospace;
+}
+
+.p-foot { text-align: center; color: rgba(255,255,255,.7); font-size: .78rem; margin-top: .6rem; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

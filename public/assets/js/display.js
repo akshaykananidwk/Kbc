@@ -154,6 +154,7 @@
     setText('dQuestion', hasQuestion ? state.question.text : '');
     renderQuestionMedia(hasQuestion ? state.question : null);
     renderIdle();
+    renderVotePanel();
     renderOptions();
     renderLadder();
     renderLifelines();
@@ -381,6 +382,59 @@
     if (current && current.scrollIntoView) {
       current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
+  }
+
+  /* --- Live audience voting panel ----------------------------------------- */
+  var voteQrCode = '';
+  var voteSecondsLeft = 0;
+  var voteSyncedAt = 0;
+  var voteWindow = 0;
+
+  function renderVotePanel() {
+    var panel = el('dVotePanel');
+    if (!panel) return;
+
+    var poll = state.poll;
+    if (!poll || poll.status !== 'open' || settings.show_qr_poll === false) {
+      panel.hidden = true;
+      voteQrCode = '';
+      return;
+    }
+    panel.hidden = false;
+
+    setText('dVoteCode', poll.code);
+    setText('dVoteCount', poll.total_votes);
+
+    // The QR only changes when the poll does, so fetch it once.
+    if (poll.code !== voteQrCode) {
+      voteQrCode = poll.code;
+      voteWindow = Math.max(1, poll.closes_in);
+      var box = el('dVoteQr');
+      if (box) {
+        box.innerHTML = '';
+        fetch(poll.qr_url, { credentials: 'same-origin' })
+          .then(function (r) { return r.text(); })
+          .then(function (svg) {
+            if (voteQrCode === poll.code) { box.innerHTML = svg; }
+          }).catch(function () { /* the printed code still works */ });
+      }
+    }
+
+    voteSecondsLeft = poll.closes_in;
+    voteSyncedAt = Date.now();
+  }
+
+  function paintVoteCountdown() {
+    var panel = el('dVotePanel');
+    if (!panel || panel.hidden) return;
+
+    var elapsed = Math.floor((Date.now() - voteSyncedAt) / 1000);
+    var left = Math.max(0, voteSecondsLeft - elapsed);
+    setText('dVoteSeconds', left);
+
+    var fill = el('dVoteFill');
+    if (fill && voteWindow > 0) { fill.style.width = ((left / voteWindow) * 100) + '%'; }
+    if (left === 0) { panel.hidden = true; }
   }
 
   function renderLifelines() {
@@ -718,5 +772,6 @@
 
   render();
   window.setInterval(paintTimer, 100);
+  window.setInterval(paintVoteCountdown, 500);
   window.setTimeout(poll, 400);
 })();

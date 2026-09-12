@@ -114,6 +114,18 @@ final class GameApiController extends Controller
         return $this->ok('Question restarted.', $this->service->restartQuestion($this->gameId($request)));
     }
 
+    /** Open live audience voting for the question on air. */
+    public function openPoll(Request $request): Response
+    {
+        return $this->ok('Audience voting is open.', $this->service->openAudiencePoll($this->gameId($request)));
+    }
+
+    /** Close voting early, before the window elapses. */
+    public function closePoll(Request $request): Response
+    {
+        return $this->ok('Audience voting closed.', $this->service->closeAudiencePoll($this->gameId($request)));
+    }
+
     public function lifeline(Request $request): Response
     {
         $code = $request->string('code', '');
