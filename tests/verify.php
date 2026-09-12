@@ -20,9 +20,12 @@ require __DIR__ . '/../bootstrap.php';
 
 use App\Core\Database;
 
-$baseUrl  = rtrim($argv[1] ?? 'http://127.0.0.1:8080', '/');
-$email    = $argv[2] ?? 'admin@ganpatiquiz.test';
-$password = $argv[3] ?? 'Ganpati2026';
+// Flags may appear anywhere; positional arguments are read from what is left.
+$positional = array_values(array_filter(array_slice($argv, 1), static fn ($a) => !str_starts_with($a, '--')));
+
+$baseUrl  = rtrim($positional[0] ?? 'http://127.0.0.1:8080', '/');
+$email    = $positional[1] ?? 'admin@ganpatiquiz.test';
+$password = $positional[2] ?? 'Ganpati2026';
 
 // ---------------------------------------------------------------------------
 // Tiny harness

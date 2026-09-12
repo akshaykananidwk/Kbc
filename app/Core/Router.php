@@ -7,6 +7,9 @@ use App\Core\Exceptions\HttpException;
 
 final class Router
 {
+    /** Matches a route constraint, allowing balanced brace quantifiers inside it. */
+    private const CONSTRAINT = '(?:[^{}]|\{\d+(?:,\d*)?\})+';
+
     /** @var array<int,array{method:string,pattern:string,regex:string,params:array<int,string>,handler:mixed,middleware:array<int,string>,name:string}> */
     private array $routes = [];
     /** @var array<int,string> */
@@ -77,20 +80,29 @@ final class Router
         }
 
         $params = [];
+        // The constraint may itself contain brace quantifiers such as
+        // {4,12}, so a plain [^}]+ would cut the pattern in half and
+        // produce a regex that silently matches nothing.
         $regex = preg_replace_callback(
-            '/\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]+))?\}/',
+            '/\{([a-zA-Z_][a-zA-Z0-9_]*)(?::(' . self::CONSTRAINT . '))?\}/',
             static function (array $m) use (&$params): string {
                 $params[] = $m[1];
-                $constraint = $m[2] ?? '[^/]+';
+                $constraint = ($m[2] ?? '') !== '' ? $m[2] : '[^/]+';
                 return '(' . $constraint . ')';
             },
             $full
         );
 
+        $compiled = '#^' . $regex . '$#u';
+        if (@preg_match($compiled, '') === false) {
+            // Fail loudly at boot instead of serving a mysterious 404.
+            throw new \RuntimeException('Route "' . $full . '" does not compile to a valid pattern.');
+        }
+
         $this->routes[] = [
             'method'     => $method,
             'pattern'    => $full,
-            'regex'      => '#^' . $regex . '$#u',
+            'regex'      => $compiled,
             'params'     => $params,
             'handler'    => $handler,
             'middleware' => array_merge($this->groupMiddleware, $middleware),
@@ -142,7 +154,11 @@ final class Router
     {
         $pattern = $this->namedRoutes[$name] ?? '/';
         foreach ($params as $key => $value) {
-            $pattern = preg_replace('/\{' . preg_quote((string) $key, '/') . '(?::[^}]+)?\}/', (string) $value, $pattern) ?? $pattern;
+            $pattern = preg_replace(
+                '/\{' . preg_quote((string) $key, '/') . '(?::' . self::CONSTRAINT . ')?\}/',
+                (string) $value,
+                $pattern
+            ) ?? $pattern;
         }
         return $pattern;
     }

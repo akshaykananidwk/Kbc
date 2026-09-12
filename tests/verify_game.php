@@ -478,6 +478,11 @@ $suite->check('display CSS scales with the viewport (vmin units)', substr_count(
 $suite->check('display CSS respects reduced motion', str_contains($displayCss, 'prefers-reduced-motion'));
 
 // ---------------------------------------------------------------------------
+// Features added after the first release.
+// ---------------------------------------------------------------------------
+require __DIR__ . '/verify_features.php';
+
+// ---------------------------------------------------------------------------
 // Tidy up and report
 // ---------------------------------------------------------------------------
 $db->run('DELETE FROM participants WHERE name = ?', ['Verification Participant']);

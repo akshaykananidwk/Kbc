@@ -1,8 +1,8 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.0.0
-**Date:** 12 September 2026
+**Version:** 1.1.0
+**Date:** 13 September 2026
 
 ## Test environment
 
@@ -21,7 +21,7 @@ php tests/verify.php https://your-domain.com admin@example.com YourPassword
 
 ## Result
 
-**181 checks executed, 181 passed, 0 failed.**
+**274 checks executed, 274 passed, 0 failed.**
 
 Per-check output is in [`verification-results.md`](verification-results.md).
 
@@ -107,13 +107,40 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Security | Secrets | GitHub token encrypted, masked in the UI, absent from API responses and logs | PASS |
 | Audit log | Coverage | Login, question changes, game creation, lock, reveal, override and reset recorded with IP | PASS |
 | Reports | Generation | Game, question and prize reports render and export as CSV | PASS |
-| Responsive | Markup | Viewport on all screens; 4 breakpoints; 16 px inputs on mobile; display scales in `vmin` | PASS |
+| Responsive | Markup | Viewport on all screens; 5 breakpoints; 16 px inputs on mobile; display scales in `vmin` | PASS |
+| Sound settings | Inline upload | Every sound, music and image setting has a real upload button; an MP3 uploaded over AJAX is stored, served and removable | PASS |
+| Sound settings | Upload hardening | A PHP file renamed to `.mp3` is refused on content, not extension | PASS |
+| Sound engine | No files needed | Ten cues are synthesised with the Web Audio API; no audio file ships and none is required | PASS |
+| Sound engine | Test button | Every audio setting has a **Test sound** button that plays the uploaded file, or the built-in tone when there is none | PASS |
+| Question media | Display | Question image, audio and video reach the display payload and render | PASS |
+| Certificates | Issue | A finished game produces serial `GQC-YYYY-NNNN` carrying the real final prize | PASS |
+| Certificates | Reprint | The serial never changes; the print count increases | PASS |
+| Certificates | Print layout | A4 landscape print stylesheet | PASS |
+| Certificates | Rehearsal | A rehearsal game is refused a certificate | PASS |
+| Hall of fame | Ranking | Winners listed with formatted prize amounts; rehearsals excluded | PASS |
+| Sponsors | Idle screen | Sponsors and the leaderboard rotate on the display between games | PASS |
+| QR codes | Generation | In-house encoder; version grows with the payload; decoded successfully by `zbarimg` | PASS |
+| QR codes | Endpoints | `/qr?for=register` and `for=display` serve SVG; an unknown target is refused | PASS |
+| Audience voting | Open | A six-character code is issued and reaches the display | PASS |
+| Audience voting | Phone page | Opens on the short code and never contains the answer | PASS |
+| Audience voting | One vote per phone | 15 phones counted once; changing a vote does not add one | PASS |
+| Audience voting | Lifeline | The poll lifeline uses the real votes when they exist, and falls back to a simulated poll when nobody votes | PASS |
+| Registration | Public form | A person registers themselves and receives a registration number | PASS |
+| Registration | Duplicate | The same mobile returns the existing registration instead of a second row | PASS |
+| Registration | Honeypot | A bot filling the hidden field is absorbed silently | PASS |
+| Fastest Finger | Round setup | Contenders entered, each issued a four-character code | PASS |
+| Fastest Finger | Secrecy | The correct order and per-contender right/wrong are absent while the round runs | PASS |
+| Fastest Finger | Ranking | The fastest *correct* answer wins; a fast wrong answer never ranks | PASS |
+| Fastest Finger | Access codes | An invalid code is refused | PASS |
+| Interface language | Gujarati / Hindi | Operator and admin screens render translated; unknown keys degrade to English | PASS |
+| Rehearsal mode | Isolation | No gift stock movement, no question statistics, hidden from history, reports and the hall of fame | PASS |
+| Routing | Constrained parameters | Route constraints containing `{n,m}` quantifiers compile and match correctly | PASS |
 
 ---
 
 ## What was verified how
 
-**Automated** (`tests/verify.php`, 181 assertions): everything in the table above
+**Automated** (`tests/verify.php`, 274 assertions): everything in the table above
 except where noted below. The suite drives the real HTTP application with real
 cookies and CSRF tokens, and asserts against the live database.
 
@@ -138,9 +165,18 @@ throwaway branch carrying a deliberately broken migration.
 - **Mobile devices.** Responsiveness was checked from the markup and CSS
   (viewport tags, breakpoints, touch target sizes, `vmin` scaling), not on
   physical phones or a real TV.
-- **Sound playback.** No audio ships with the application, by design. The event
-  wiring is implemented and the settings accept uploads; actual playback depends
-  on the files you provide.
+- **Sound playback.** The cue tones are generated in the browser with the Web
+  Audio API, so the application makes sound with no files at all. The generator
+  and the event wiring were verified in source, and uploaded music was verified
+  end to end (stored, served in the display payload, removable) — but the tones
+  themselves can only be *heard* in a browser, which a PHP test cannot do.
+  Press the **Test sound** buttons in **Settings → Sound** once on your machine.
+- **Phones in the hall.** Audience voting and Fastest Finger were driven over
+  real HTTP with separate cookie jars and distinct voter tokens, which is what a
+  room full of phones amounts to; they were not tested on physical handsets over
+  Wi-Fi. Check your venue's Wi-Fi and the URL in the QR code before the event.
+- **Printing.** The certificate page and its A4 landscape print stylesheet were
+  verified in markup and CSS, not by printing on paper.
 
 ## Known behaviour worth knowing before your event
 
@@ -152,6 +188,13 @@ throwaway branch carrying a deliberately broken migration.
 2. **MySQL cannot roll back DDL.** If a future migration fails halfway, the
    runner calls that migration's own `down()` to clean up. Migrations should
    therefore always implement `down()` properly.
-3. **The updater needs `curl` and `zip`.** Without them the rest of the
+3. **Live audience voting needs everyone on the same network.** The QR code
+   contains the address the browser is using, so the phones must be able to
+   reach that address. On a venue Wi-Fi set `app_url` in **Settings → General**
+   to the machine's LAN address before printing or showing the code.
+4. **Rehearsal games are kept, not discarded.** They are simply excluded from
+   history, statistics, the hall of fame and certificates. Filter for them in
+   **Admin → Reports → Games** if you want to review a practice run.
+5. **The updater needs `curl` and `zip`.** Without them the rest of the
    application works normally; only the update manager is unavailable, and the
    Updates page says so.

@@ -39,6 +39,10 @@ $fileUrl = $hasFile ? upload_url($value) : '';
         <?= $hasFile ? 'Replace' : ($kind === 'audio' ? 'Upload music' : 'Upload image') ?>
         <input type="file" accept="<?= e($accept) ?>" data-media-input hidden>
       </label>
+      <?php if ($kind === 'audio'): ?>
+        <button type="button" class="btn btn--ghost btn--sm" data-media-test
+                data-cue="<?= e(str_starts_with($key, 'sound_') ? substr($key, 6) : '') ?>">&#9654; Test sound</button>
+      <?php endif; ?>
       <button type="button" class="btn btn--ghost btn--sm" data-media-remove <?= $hasFile ? '' : 'hidden' ?>>Remove</button>
     </div>
   </div>

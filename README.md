@@ -17,6 +17,9 @@ step — upload the folder to any shared host, open `/install`, and you are runn
 | **Audience display** | `/display` | The crowd, on monitor 2 / projector — festive presentation only, **never the correct answer before the reveal** |
 | **Admin panel** | `/admin` | Questions, participants, prize ladder, gifts, lifelines, settings, reports, backups, updates |
 | **Installer** | `/install` | One-time setup wizard, then permanently locked |
+| **Audience voting** | `/vote/CODE` | The crowd, on their own phones — reached by scanning the QR code on the TV |
+| **Self registration** | `/register` | Anyone in the hall who wants to play — QR code on the TV |
+| **Fastest Finger** | `/fff/ID` | Shortlisted contenders, on their phones |
 
 The two screens stay synchronised through a lightweight long-poll against
 `/api/display/state`. No page refresh is ever needed during a show.
@@ -39,7 +42,23 @@ The two screens stay synchronised through a lightweight long-poll against
   not at all.
 - **One-click GitHub updates** with automatic backup, protected paths, database
   migration, cache clear and automatic rollback on failure.
-- **Gujarati, Hindi and English** throughout, stored as `utf8mb4`.
+- **Sound that just works.** Every cue (question, timer, lock, right, wrong, win) is
+  synthesised in the browser with the Web Audio API, so the app makes sound out of the
+  box with no audio files and no licensing worries. Upload your own intro song,
+  background music or individual cues in **Admin → Settings → Sound** whenever you want
+  to — each one has a real upload button, a player, a **Test sound** button and a
+  remove button.
+- **Live audience poll from real phones.** The Audience Poll lifeline puts a QR code on
+  the TV; the crowd votes from their own phones and the bars show the real result. One
+  vote per phone, and it quietly falls back to a simulated poll if nobody votes.
+- **Fastest Finger First** round to pick the next contestant, ranked by time among the
+  correct answers only. The answer never leaves the server while the round is running.
+- **Winner certificates** (A4 landscape, print-ready) with a stable serial number, a
+  **hall of fame**, **sponsor slides** and a **cheque presentation** animation.
+- **Rehearsal mode.** Practise a full show without touching gift stock, question
+  statistics, the leaderboard or the reports.
+- **Gujarati, Hindi and English** throughout, stored as `utf8mb4` — including the admin
+  and operator interface itself (**Admin → Settings → Interface language**).
 
 ---
 
@@ -88,6 +107,20 @@ Start game → Start timer → (participant answers) → click A/B/C/D
 Keyboard shortcuts: `A B C D` select, `Space` start timer, `P` pause,
 `L` lock, `R` reveal, `N` next.
 
+**Before the real show**, tick *Rehearsal* when creating the game. Everything behaves
+exactly as it will on the night, but nothing is recorded: gift stock, question
+statistics, reports and the hall of fame stay untouched.
+
+**During the show you can also:**
+
+- Open **Audience voting** while a question is up — the TV shows a QR code, the crowd
+  votes from their phones, and the poll lifeline then uses those real votes.
+- Run a **Fastest Finger First** round from `/operator/fff` to choose who plays next.
+  Each contender gets a four-character code for their phone.
+- Print the winner's **certificate** from `/admin/certificates` the moment the game ends.
+- Leave `/display` on between games — it rotates the hall of fame, your sponsors and
+  the registration QR code by itself.
+
 ---
 
 ## Project layout
@@ -98,12 +131,14 @@ Keyboard shortcuts: `A B C D` select, `Space` start timer, `P` pause,
   /Core          Router, Request/Response, Database (PDO), View, Session, Csrf, Validator
   /Middleware    Auth, Role, CSRF, throttle, installed, no-index
   /Repositories  Query objects, one per aggregate
-  /Services      GameService (the engine), Auth, Settings, Backup, Update, Migration, Audit
-  /Support       Str, Money, Crypto, Uploader, Csv, helpers
+  /Services      GameService (the engine), AudiencePoll, FastestFinger, Certificate,
+                 Leaderboard, Auth, Settings, Backup, Update, Migration, Audit
+  /Support       Str, Money, Crypto, Uploader, Csv, QrCode, helpers
 /config          app, database, game, updates
 /database        /migrations (versioned, tracked)  /seeders
 /public          /assets (css, js)  /uploads (never executable)
-/resources/views admin, operator, display, install, errors, layouts, partials
+/resources/lang  en, gu, hi interface translations
+/resources/views admin, operator, display, public, install, errors, layouts, partials
 /routes          web.php, api.php
 /storage         logs, cache, backups, tmp  (deny-all, outside the web path)
 index.php        front controller      console.php  CLI maintenance

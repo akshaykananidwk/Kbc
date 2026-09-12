@@ -143,3 +143,7 @@ $selectOptions = [
   </div>
 </div>
 <?php $view->stop(); ?>
+
+<?php $view->start('scripts'); ?>
+<script src="<?= e(asset('assets/js/audio.js')) ?>"></script>
+<?php $view->stop(); ?>

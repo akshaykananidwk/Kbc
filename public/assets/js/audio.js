@@ -35,24 +35,34 @@
   }
 
   /* --- Unlocking -------------------------------------------------------- */
+  /**
+   * Opens the audio context. Safe to call directly from a click handler
+   * (Settings → Test sound does exactly that) as well as from the
+   * first-interaction listeners below.
+   */
+  QuizAudio.prototype.unlockNow = function () {
+    if (this.unlocked) {
+      if (this.context && this.context.state === 'suspended') { this.context.resume(); }
+      return;
+    }
+    this.unlocked = true;
+    try {
+      var Ctx = global.AudioContext || global.webkitAudioContext;
+      if (Ctx) {
+        this.context = new Ctx();
+        if (this.context.state === 'suspended') { this.context.resume(); }
+      }
+    } catch (e) { this.context = null; }
+    if (this._pendingBed) {
+      this.playBed(this._pendingBed);
+      this._pendingBed = null;
+    }
+    if (typeof this.onUnlock === 'function') { this.onUnlock(); }
+  };
+
   QuizAudio.prototype._armUnlock = function () {
     var self = this;
-    var unlock = function () {
-      if (self.unlocked) return;
-      self.unlocked = true;
-      try {
-        var Ctx = global.AudioContext || global.webkitAudioContext;
-        if (Ctx) {
-          self.context = new Ctx();
-          if (self.context.state === 'suspended') { self.context.resume(); }
-        }
-      } catch (e) { self.context = null; }
-      if (self._pendingBed) {
-        self.playBed(self._pendingBed);
-        self._pendingBed = null;
-      }
-      if (typeof self.onUnlock === 'function') { self.onUnlock(); }
-    };
+    var unlock = function () { self.unlockNow(); };
     ['click', 'keydown', 'touchstart', 'pointerdown'].forEach(function (evt) {
       global.document.addEventListener(evt, unlock, { once: true, passive: true });
     });

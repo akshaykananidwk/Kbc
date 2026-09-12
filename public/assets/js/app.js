@@ -210,6 +210,8 @@
     }
   }
 
+  var tester = null;
+
   fields.forEach(function (field) {
     var key = field.getAttribute('data-key');
     var kind = field.getAttribute('data-kind') || 'image';
@@ -257,6 +259,38 @@
           field.classList.remove('is-uploading');
           setStatus(field, 'Could not reach the server.', 'error');
         });
+      });
+    }
+
+    // "Test sound" plays whatever this setting will actually play during a
+    // show: the uploaded file when there is one, otherwise the built-in tone.
+    var testBtn = field.querySelector('[data-media-test]');
+    if (testBtn) {
+      testBtn.addEventListener('click', function () {
+        var url = hidden && hidden.value ? base + '/public/' + hidden.value.replace(/^\/+/, '') : '';
+        if (url) {
+          var player = field.querySelector('[data-media-preview] audio');
+          if (player) {
+            player.currentTime = 0;
+            player.play().catch(function () { setStatus(field, 'Your browser blocked playback. Press play on the player above.', 'error'); });
+          } else {
+            new Audio(url).play().catch(function () {});
+          }
+          setStatus(field, 'Playing your file…', 'done');
+          return;
+        }
+
+        var cue = testBtn.getAttribute('data-cue') || '';
+        if (!cue || typeof window.QuizAudio !== 'function') {
+          setStatus(field, 'Upload a track to hear this one.', 'busy');
+          return;
+        }
+        if (!tester) {
+          tester = new window.QuizAudio({ soundEnabled: true, synthFallback: true, soundVolume: 80 });
+        }
+        tester.unlockNow();
+        tester.play(cue);
+        setStatus(field, 'Playing the built-in tone (no file uploaded).', 'done');
       });
     }
 
