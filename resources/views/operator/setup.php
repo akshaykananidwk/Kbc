@@ -47,6 +47,14 @@ $ready = $questionCount >= max(1, $maxLevel) && $maxLevel > 0 && $participants !
             <?php endforeach; ?>
           </select>
         </div>
+        <label class="check mb-2">
+          <input type="checkbox" id="rehearsalToggle" <?= $rehearsalDefault ? 'checked' : '' ?>>
+          <span>Rehearsal only
+            <small>Practice run: nothing is recorded in reports or the leaderboard,
+            gifts are not taken out of stock, question statistics are untouched and
+            questions can be reused. No certificate is issued.</small>
+          </span>
+        </label>
         <button type="button" class="btn btn--primary btn--lg btn--block" id="createGameBtn"
                 <?= ($ready && $activeGame === null) ? '' : 'disabled' ?>>Create the game</button>
         <div id="setupResult" class="mt-2"></div>
@@ -111,11 +119,14 @@ $ready = $questionCount >= max(1, $maxLevel) && $maxLevel > 0 && $participants !
   button.addEventListener('click', function () {
     var participantId = document.getElementById('participantSelect').value;
     var order = document.getElementById('orderSelect').value;
+    var rehearsal = document.getElementById('rehearsalToggle').checked;
     var box = document.getElementById('setupResult');
     button.disabled = true;
     button.textContent = 'Creating…';
 
-    window.QuizApi.post(base + '/api/game/create', { participant_id: participantId, question_order: order })
+    window.QuizApi.post(base + '/api/game/create', {
+      participant_id: participantId, question_order: order, rehearsal: rehearsal
+    })
       .then(function (response) {
         button.disabled = false;
         button.textContent = 'Create the game';

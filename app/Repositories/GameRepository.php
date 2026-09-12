@@ -137,6 +137,12 @@ final class GameRepository extends Repository
             $where[] = '(p.name LIKE :search OR g.game_code LIKE :search)';
             $bindings['search'] = '%' . $filters['search'] . '%';
         }
+        // Rehearsals are hidden unless explicitly asked for.
+        if (($filters['rehearsal'] ?? '') === 'only') {
+            $where[] = 'g.is_rehearsal = 1';
+        } elseif (($filters['rehearsal'] ?? '') !== 'all') {
+            $where[] = 'g.is_rehearsal = 0';
+        }
         if (($filters['status'] ?? '') !== '') {
             $where[] = 'g.status = :status';
             $bindings['status'] = $filters['status'];
@@ -175,6 +181,7 @@ final class GameRepository extends Repository
     /** @return array<string,mixed> */
     public function statistics(): array
     {
+        // Rehearsals never count towards the real numbers.
         $row = $this->db->selectOne(
             "SELECT
                 COUNT(*) AS total_games,
@@ -184,7 +191,7 @@ final class GameRepository extends Repository
                 COALESCE(AVG(NULLIF(final_prize, 0)), 0) AS average_prize,
                 COALESCE(MAX(final_prize), 0) AS highest_prize,
                 COALESCE(AVG(questions_attempted), 0) AS average_questions
-             FROM games"
+             FROM games WHERE is_rehearsal = 0"
         );
         return $row ?? [];
     }
@@ -196,6 +203,7 @@ final class GameRepository extends Repository
             'SELECT g.id, g.game_code, g.status, g.final_prize, g.questions_attempted, g.created_at,
                     p.name AS participant_name
              FROM games g LEFT JOIN participants p ON p.id = g.participant_id
+             WHERE g.is_rehearsal = 0
              ORDER BY g.id DESC LIMIT ' . max(1, $limit)
         );
     }

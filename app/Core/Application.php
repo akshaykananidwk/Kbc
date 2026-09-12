@@ -38,6 +38,7 @@ final class Application
         Env::load($app->root . '/.env');
         Config::load($app->root . '/config');
         View::setViewPath($app->root . '/resources/views');
+        Lang::setPath($app->root . '/resources/lang');
         Logger::setPath($app->storagePath('logs'));
 
         $app->testing = (bool) Env::get('APP_TESTING', false);
@@ -46,6 +47,7 @@ final class Application
 
         $app->configureErrorHandling();
         $app->registerMiddleware();
+        $app->bootLocale();
 
         return $app;
     }
@@ -61,6 +63,28 @@ final class Application
     public static function isTesting(): bool
     {
         return self::$instance !== null && self::$instance->testing;
+    }
+
+    /**
+     * Pick the interface language: the admin setting when the database is
+     * reachable, otherwise whatever .env says.
+     */
+    private function bootLocale(): void
+    {
+        $locale = (string) (Env::get('APP_LOCALE', 'en') ?? 'en');
+
+        if ($this->installed) {
+            try {
+                $stored = SettingsService::string('interface_language', '');
+                if ($stored !== '') {
+                    $locale = $stored;
+                }
+            } catch (\Throwable) {
+                // Database not ready - the .env value stands.
+            }
+        }
+
+        Lang::use(in_array($locale, Lang::available(), true) ? $locale : 'en');
     }
 
     public function isDebug(): bool

@@ -28,6 +28,12 @@ $view->start('content');
             <option value="<?= e($status) ?>" <?= $filters['status'] === $status ? 'selected' : '' ?>><?= e(ucfirst(str_replace('_', ' ', $status))) ?></option>
           <?php endforeach; ?>
         </select></div>
+      <div><label class="label" for="rehearsal">Rehearsals</label>
+        <select id="rehearsal" name="rehearsal" data-auto-submit>
+          <option value="">Hide rehearsals</option>
+          <option value="all" <?= ($filters['rehearsal'] ?? '') === 'all' ? 'selected' : '' ?>>Show all</option>
+          <option value="only" <?= ($filters['rehearsal'] ?? '') === 'only' ? 'selected' : '' ?>>Rehearsals only</option>
+        </select></div>
       <div><label class="label" for="from">From</label><input type="date" id="from" name="from" value="<?= e($filters['from']) ?>"></div>
       <div><label class="label" for="to">To</label><input type="date" id="to" name="to" value="<?= e($filters['to']) ?>"></div>
       <div><button type="submit" class="btn btn--primary btn--block">Filter</button></div>
@@ -50,7 +56,11 @@ $view->start('content');
         <tbody>
         <?php foreach ($games as $game): ?>
           <tr>
-            <td class="mono small"><?= e($game['game_code']) ?></td>
+            <td class="mono small"><?= e($game['game_code']) ?>
+              <?php if ((int) ($game['is_rehearsal'] ?? 0) === 1): ?>
+                <div><span class="badge badge--warn">rehearsal</span></div>
+              <?php endif; ?>
+            </td>
             <td>
               <strong><?= e($game['participant_name'] ?? '—') ?></strong>
               <?php if (($game['participant_city'] ?? '') !== ''): ?><div class="small muted"><?= e($game['participant_city']) ?></div><?php endif; ?>

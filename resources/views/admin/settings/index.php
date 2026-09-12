@@ -9,10 +9,22 @@ foreach ($groups as $rows) {
         if ($row['type'] === 'boolean') { $booleanKeys[] = (string) $row['key_name']; }
     }
 }
+$languageNames = ['gu' => 'ગુજરાતી (Gujarati)', 'hi' => 'हिन्दी (Hindi)', 'en' => 'English'];
+$interfaceOptions = [];
+foreach (App\Core\Lang::available() as $available) {
+    $coverage = App\Core\Lang::coverage($available);
+    $label = $languageNames[$available] ?? strtoupper($available);
+    if ($available !== 'en' && $coverage['total'] > 0 && $coverage['translated'] < $coverage['total']) {
+        $label .= ' — ' . round($coverage['translated'] / $coverage['total'] * 100) . '% translated';
+    }
+    $interfaceOptions[$available] = $label;
+}
+
 $selectOptions = [
-    'question_order' => ['fixed' => 'Fixed order', 'random' => 'Random', 'category' => 'By level category', 'difficulty' => 'By level difficulty'],
-    'timer_style'    => ['ring' => 'Ring', 'bar' => 'Bar', 'digits' => 'Digits only'],
-    'language'       => ['gu' => 'ગુજરાતી (Gujarati)', 'hi' => 'हिन्दी (Hindi)', 'en' => 'English'],
+    'question_order'     => ['fixed' => 'Fixed order', 'random' => 'Random', 'category' => 'By level category', 'difficulty' => 'By level difficulty'],
+    'timer_style'        => ['ring' => 'Ring', 'bar' => 'Bar', 'digits' => 'Digits only'],
+    'language'           => $languageNames,
+    'interface_language' => $interfaceOptions,
 ];
 ?>
 <div class="page-head">

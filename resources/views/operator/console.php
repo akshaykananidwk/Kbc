@@ -7,10 +7,15 @@ $config = [
     'allowQuit'    => (bool) $allowQuit,
     'requireLock'  => (bool) $requireLock,
     'audio'        => $audio,
+    'labels'       => [
+        'hideAnswer' => __('Hide answer'),
+        'showAnswer' => __('Show answer'),
+        'ready'      => __('Ready.'),
+    ],
 ];
 ?>
 <!DOCTYPE html>
-<html lang="<?= e(setting('language', 'gu')) ?>">
+<html lang="<?= e(App\Core\Lang::locale()) ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,38 +31,39 @@ $config = [
 <script type="application/json" id="opState"><?= $stateJson ?></script>
 
 <header class="op-bar">
-  <span class="op-bar__title">Operator control</span>
+  <span class="op-bar__title"><?= _e('Operator control') ?></span>
   <span class="op-bar__chip" id="opStatusChip">—</span>
   <span class="op-bar__chip" id="opGameCode">—</span>
   <span class="op-bar__chip" id="opState">—</span>
+  <span class="op-bar__chip op-bar__chip--wait" id="opRehearsal" hidden>REHEARSAL</span>
   <span class="op-bar__spacer"></span>
   <a class="op-link" href="<?= e($displayUrl) ?>" target="_blank" rel="noopener">Open display screen ↗</a>
-  <a class="op-link" href="<?= e(url('/operator/setup')) ?>">New game</a>
-  <a class="op-link" href="<?= e(url('/admin')) ?>">Admin</a>
+  <a class="op-link" href="<?= e(url('/operator/setup')) ?>"><?= _e('New game') ?></a>
+  <a class="op-link" href="<?= e(url('/admin')) ?>"><?= _e('Admin') ?></a>
 </header>
 
 <div class="op-body">
   <div>
     <div class="op-panel">
       <div class="op-panel__head">
-        <span>Question</span>
-        <button type="button" class="btn btn--ghost btn--sm" id="btnToggleAnswer">Hide answer</button>
+        <span><?= _e('Question') ?></span>
+        <button type="button" class="btn btn--ghost btn--sm" id="btnToggleAnswer"><?= _e('Hide answer') ?></button>
       </div>
       <div class="op-panel__body">
         <div class="op-meta">
-          <div class="op-meta__item"><div class="op-meta__label">Question</div><div class="op-meta__value" id="opLevel">—</div></div>
-          <div class="op-meta__item"><div class="op-meta__label">This prize</div><div class="op-meta__value" id="opPrize">—</div></div>
-          <div class="op-meta__item"><div class="op-meta__label">Next prize</div><div class="op-meta__value" id="opNextPrize">—</div></div>
-          <div class="op-meta__item"><div class="op-meta__label">Won so far</div><div class="op-meta__value" id="opWon">—</div></div>
-          <div class="op-meta__item"><div class="op-meta__label">Guaranteed</div><div class="op-meta__value" id="opGuaranteed">—</div></div>
-          <div class="op-meta__item"><div class="op-meta__label">Gift</div><div class="op-meta__value" id="opGift" style="font-size:.88rem">—</div></div>
+          <div class="op-meta__item"><div class="op-meta__label"><?= _e('Question') ?></div><div class="op-meta__value" id="opLevel">—</div></div>
+          <div class="op-meta__item"><div class="op-meta__label"><?= _e('This prize') ?></div><div class="op-meta__value" id="opPrize">—</div></div>
+          <div class="op-meta__item"><div class="op-meta__label"><?= _e('Next prize') ?></div><div class="op-meta__value" id="opNextPrize">—</div></div>
+          <div class="op-meta__item"><div class="op-meta__label"><?= _e('Won so far') ?></div><div class="op-meta__value" id="opWon">—</div></div>
+          <div class="op-meta__item"><div class="op-meta__label"><?= _e('Guaranteed') ?></div><div class="op-meta__value" id="opGuaranteed">—</div></div>
+          <div class="op-meta__item"><div class="op-meta__label"><?= _e('Gift') ?></div><div class="op-meta__value" id="opGift" style="font-size:.88rem">—</div></div>
         </div>
 
         <div class="op-question" id="opQuestion">Loading…</div>
         <div class="op-options" id="opOptions"></div>
 
         <div class="op-answer-key" id="opAnswerKey">
-          <span class="op-answer-key__label">Correct answer<br>(operator only)</span>
+          <span class="op-answer-key__label"><?= _e('Correct answer') ?><br>(operator only)</span>
           <span class="op-answer-key__value" id="opAnswerKeyValue">—</span>
           <span class="op-answer-key__text" id="opAnswerKeyText"></span>
         </div>
@@ -65,40 +71,40 @@ $config = [
     </div>
 
     <div class="op-panel mt-2">
-      <div class="op-panel__head"><span>Timer</span><span id="opTimerState">—</span></div>
+      <div class="op-panel__head"><span><?= _e('Timer') ?></span><span id="opTimerState">—</span></div>
       <div class="op-panel__body">
         <div class="op-timer">
           <div class="op-timer__value" id="opTimerValue">0</div>
           <div class="op-timer__bar"><div class="op-timer__fill" id="opTimerFill"></div></div>
         </div>
         <div class="op-controls">
-          <button type="button" class="op-btn op-btn--go" id="btnStartTimer">Start timer<span class="op-btn__hint">space</span></button>
-          <button type="button" class="op-btn op-btn--warn" id="btnPauseTimer">Pause<span class="op-btn__hint">P</span></button>
-          <button type="button" class="op-btn" id="btnResumeTimer">Resume</button>
-          <button type="button" class="op-btn" id="btnResetTimer">Reset timer</button>
+          <button type="button" class="op-btn op-btn--go" id="btnStartTimer"><?= _e('Start timer') ?><span class="op-btn__hint">space</span></button>
+          <button type="button" class="op-btn op-btn--warn" id="btnPauseTimer"><?= _e('Pause') ?><span class="op-btn__hint">P</span></button>
+          <button type="button" class="op-btn" id="btnResumeTimer"><?= _e('Resume') ?></button>
+          <button type="button" class="op-btn" id="btnResetTimer"><?= _e('Reset timer') ?></button>
         </div>
       </div>
     </div>
 
     <div class="op-panel mt-2">
-      <div class="op-panel__head"><span>Game controls</span></div>
+      <div class="op-panel__head"><span><?= _e('Game controls') ?></span></div>
       <div class="op-panel__body">
         <div class="op-controls">
-          <button type="button" class="op-btn op-btn--go op-btn--wide" id="btnStartGame">Start the game</button>
-          <button type="button" class="op-btn op-btn--blue" id="btnLock">Lock answer<span class="op-btn__hint">L</span></button>
-          <button type="button" class="op-btn op-btn--warn" id="btnUnlock">Override lock</button>
-          <button type="button" class="op-btn op-btn--gold" id="btnReveal">Reveal result<span class="op-btn__hint">R</span></button>
-          <button type="button" class="op-btn op-btn--go" id="btnNext">Next question<span class="op-btn__hint">N</span></button>
-          <button type="button" class="op-btn" id="btnPrevious">Previous question</button>
-          <button type="button" class="op-btn" id="btnRestart">Restart question</button>
-          <button type="button" class="op-btn op-btn--warn" id="btnQuit">Participant quits</button>
-          <button type="button" class="op-btn op-btn--danger" id="btnEnd">End game</button>
-          <button type="button" class="op-btn op-btn--danger" id="btnReset">Reset game</button>
+          <button type="button" class="op-btn op-btn--go op-btn--wide" id="btnStartGame"><?= _e('Start the game') ?></button>
+          <button type="button" class="op-btn op-btn--blue" id="btnLock"><?= _e('Lock answer') ?><span class="op-btn__hint">L</span></button>
+          <button type="button" class="op-btn op-btn--warn" id="btnUnlock"><?= _e('Override lock') ?></button>
+          <button type="button" class="op-btn op-btn--gold" id="btnReveal"><?= _e('Reveal result') ?><span class="op-btn__hint">R</span></button>
+          <button type="button" class="op-btn op-btn--go" id="btnNext"><?= _e('Next question') ?><span class="op-btn__hint">N</span></button>
+          <button type="button" class="op-btn" id="btnPrevious"><?= _e('Previous question') ?></button>
+          <button type="button" class="op-btn" id="btnRestart"><?= _e('Restart question') ?></button>
+          <button type="button" class="op-btn op-btn--warn" id="btnQuit"><?= _e('Participant quits') ?></button>
+          <button type="button" class="op-btn op-btn--danger" id="btnEnd"><?= _e('End game') ?></button>
+          <button type="button" class="op-btn op-btn--danger" id="btnReset"><?= _e('Reset game') ?></button>
           <a class="op-btn op-btn--gold op-btn--wide" id="btnSummary"
              href="<?= e(url('/operator/summary/' . (int) ($state['game_id'] ?? 0))) ?>"
              style="display:none;text-decoration:none">View game report →</a>
         </div>
-        <div class="op-status mt-2" id="opStatus">Ready.</div>
+        <div class="op-status mt-2" id="opStatus"><?= _e('Ready.') ?></div>
       </div>
     </div>
   </div>
@@ -118,13 +124,13 @@ $config = [
     </div>
 
     <div class="op-panel">
-      <div class="op-panel__head"><span>Lifelines</span></div>
+      <div class="op-panel__head"><span><?= _e('Lifelines') ?></span></div>
       <div class="op-panel__body"><div class="op-lifelines" id="opLifelines"></div></div>
     </div>
 
     <div class="op-panel">
       <div class="op-panel__head">
-        <span>Audience voting</span>
+        <span><?= _e('Audience voting') ?></span>
         <span id="opPollStatus">closed</span>
       </div>
       <div class="op-panel__body">
@@ -135,8 +141,8 @@ $config = [
           </div>
         </div>
         <div class="op-controls mt-2">
-          <button type="button" class="op-btn op-btn--blue" id="btnOpenPoll">Open voting</button>
-          <button type="button" class="op-btn op-btn--warn" id="btnClosePoll">Close voting</button>
+          <button type="button" class="op-btn op-btn--blue" id="btnOpenPoll"><?= _e('Open voting') ?></button>
+          <button type="button" class="op-btn op-btn--warn" id="btnClosePoll"><?= _e('Close voting') ?></button>
         </div>
         <p class="small" style="color:#a8907f;margin:.6rem 0 0">
           Open voting, let the audience scan the QR on the TV, then use the
@@ -146,12 +152,12 @@ $config = [
     </div>
 
     <div class="op-panel">
-      <div class="op-panel__head"><span>Prize ladder</span></div>
+      <div class="op-panel__head"><span><?= _e('Prize Ladder') ?></span></div>
       <div class="op-panel__body"><div class="op-ladder" id="opLadder"></div></div>
     </div>
 
     <div class="op-panel">
-      <div class="op-panel__head"><span>Keyboard shortcuts</span></div>
+      <div class="op-panel__head"><span><?= _e('Keyboard shortcuts') ?></span></div>
       <div class="op-panel__body" style="font-size:.8rem;color:#a8907f;line-height:1.9">
         <strong style="color:#f4ece4">A B C D</strong> — select an option<br>
         <strong style="color:#f4ece4">Space</strong> — start the timer<br>

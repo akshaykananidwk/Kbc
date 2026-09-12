@@ -29,6 +29,7 @@ final class GameHistoryController extends Controller
             'status' => $request->string('status'),
             'from'   => $request->string('from'),
             'to'     => $request->string('to'),
+            'rehearsal' => $request->string('rehearsal'),
         ];
 
         $result = $this->games->paginate($filters, $page, $perPage);

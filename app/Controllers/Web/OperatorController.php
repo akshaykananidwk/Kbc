@@ -60,6 +60,7 @@ final class OperatorController extends Controller
                 'difficulty' => 'By difficulty set on each prize level',
             ],
             'currentOrder'  => SettingsService::string('question_order', 'fixed'),
+            'rehearsalDefault' => SettingsService::bool('rehearsal_mode', false),
         ]);
     }
 

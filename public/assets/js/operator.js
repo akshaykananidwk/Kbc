@@ -176,6 +176,9 @@
       );
     }
 
+    var rehearsalChip = document.getElementById('opRehearsal');
+    if (rehearsalChip) { rehearsalChip.hidden = !state.is_rehearsal; }
+
     // Participant
     var participant = state.participant || {};
     setText('opParticipantName', participant.name || 'No participant');
@@ -430,7 +433,11 @@
   bind('btnToggleAnswer', function () {
     answerVisible = !answerVisible;
     var button = document.getElementById('btnToggleAnswer');
-    if (button) button.textContent = answerVisible ? 'Hide answer' : 'Show answer';
+    if (button) {
+      button.textContent = answerVisible
+        ? (config.labels ? config.labels.hideAnswer : 'Hide answer')
+        : (config.labels ? config.labels.showAnswer : 'Show answer');
+    }
     renderAnswerKey(state.question, state.private || {});
   });
 
@@ -462,5 +469,5 @@
   });
 
   render();
-  setStatus('Ready.', '');
+  setStatus(config.labels ? config.labels.ready : 'Ready.', '');
 })();

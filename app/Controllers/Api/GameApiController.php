@@ -42,7 +42,8 @@ final class GameApiController extends Controller
         $state = $this->service->createGame(
             $participantId,
             AuthService::id(),
-            $order === '' ? null : $order
+            $order === '' ? null : $order,
+            $request->has('rehearsal') ? $request->bool('rehearsal', false) : null
         );
         return $this->ok('Game created.', $state);
     }

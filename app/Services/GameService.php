@@ -60,8 +60,12 @@ final class GameService
     // Game lifecycle
     // -----------------------------------------------------------------
 
-    public function createGame(int $participantId, ?int $operatorId, ?string $questionOrder = null): array
-    {
+    public function createGame(
+        int $participantId,
+        ?int $operatorId,
+        ?string $questionOrder = null,
+        ?bool $isRehearsal = null
+    ): array {
         $participant = $this->db->selectOne('SELECT * FROM participants WHERE id = ? LIMIT 1', [$participantId]);
         if ($participant === null) {
             throw new HttpException(422, 'Select a valid participant before starting a game.');
@@ -83,6 +87,8 @@ final class GameService
             $order = 'fixed';
         }
 
+        $rehearsal = $isRehearsal ?? SettingsService::bool('rehearsal_mode', false);
+
         $gameId = $this->games->create([
             'game_code'       => $this->games->generateCode(),
             'participant_id'  => $participantId,
@@ -92,12 +98,19 @@ final class GameService
             'state_version'   => 1,
             'current_level'   => 0,
             'question_order'  => $order,
+            'is_rehearsal'    => $rehearsal ? 1 : 0,
         ]);
 
         $this->games->logEvent($gameId, 'game.created', self::STATE_INTRO, 0, [
             'participant' => $participant['name'],
+            'rehearsal'   => $rehearsal,
         ], $operatorId);
-        AuditService::log('game.created', 'Started a new game for ' . $participant['name'], 'game', $gameId);
+        AuditService::log(
+            'game.created',
+            ($rehearsal ? 'Started a REHEARSAL game for ' : 'Started a new game for ') . $participant['name'],
+            'game',
+            $gameId
+        );
 
         return $this->state($gameId, true);
     }
@@ -144,13 +157,18 @@ final class GameService
             $questionId = (int) $existing['question_id'];
             $timeLimit  = (int) $existing['time_limit'];
         } else {
+            // A rehearsal may reuse questions freely - it is practice, and it
+            // must not burn through the question bank before the real show.
+            $allowReuse = (int) ($game['is_rehearsal'] ?? 0) === 1
+                || SettingsService::bool('repeat_questions', false);
+
             $question = $this->questions->pickForLevel(
                 $levelNo,
                 (string) $game['question_order'],
                 $level['category_id'] === null ? null : (int) $level['category_id'],
                 (string) $level['difficulty'],
                 $this->games->servedQuestionIds($gameId),
-                SettingsService::bool('repeat_questions', false)
+                $allowReuse
             );
 
             if ($question === null) {
@@ -489,9 +507,12 @@ final class GameService
             $awardedGiftId = null;
             $prizeAwarded = 0.0;
 
+            $isRehearsal = (int) ($game['is_rehearsal'] ?? 0) === 1;
+
             if ($isCorrect) {
                 $prizeAwarded = $levelAmount;
-                if ($giftId !== null && $this->gifts->consume($giftId)) {
+                // A rehearsal never takes a real gift out of stock.
+                if ($giftId !== null && !$isRehearsal && $this->gifts->consume($giftId)) {
                     $awardedGiftId = $giftId;
                 }
             }
@@ -524,7 +545,10 @@ final class GameService
                 $this->db->update('game_answers', $answerData, ['id' => (int) $existingAnswer['id']]);
             }
 
-            $this->questions->recordResult($questionId, $isCorrect);
+            // Rehearsal answers do not skew the question statistics.
+            if (!$isRehearsal) {
+                $this->questions->recordResult($questionId, $isCorrect);
+            }
 
             $maxLevel = $this->levels->maxLevel();
             $questionsAttempted = (int) ($this->db->scalar(
@@ -1117,6 +1141,7 @@ final class GameService
             'state_version'  => (int) $game['state_version'],
             'server_time'    => round(microtime(true), 3),
             'is_finished'    => in_array((string) $game['status'], ['completed', 'wrong_answer', 'time_up', 'quit', 'abandoned'], true),
+            'is_rehearsal'   => (int) ($game['is_rehearsal'] ?? 0) === 1,
 
             'participant'    => [
                 'id'      => $game['participant_id'] === null ? null : (int) $game['participant_id'],
@@ -1219,6 +1244,7 @@ final class GameService
             'state_version' => 0,
             'server_time'   => round(microtime(true), 3),
             'is_finished'   => false,
+            'is_rehearsal'  => false,
             'participant'   => null,
             'level'         => 0,
             'total_levels'  => $this->levels->maxLevel(),

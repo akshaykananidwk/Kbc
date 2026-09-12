@@ -17,6 +17,29 @@ if (!function_exists('e')) {
     }
 }
 
+if (!function_exists('__')) {
+    /**
+     * Translate an interface string.
+     *
+     * The key is the English text, so an untranslated string still reads
+     * correctly rather than showing a debug token.
+     *
+     * @param array<string,string|int> $replace
+     */
+    function __(string $key, array $replace = []): string
+    {
+        return \App\Core\Lang::get($key, $replace);
+    }
+}
+
+if (!function_exists('_e')) {
+    /** Translate and escape in one step, for use inside templates. */
+    function _e(string $key, array $replace = []): string
+    {
+        return e(\App\Core\Lang::get($key, $replace));
+    }
+}
+
 if (!function_exists('url')) {
     function url(string $path = '/'): string
     {
