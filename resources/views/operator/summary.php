@@ -10,6 +10,9 @@ $view->start('content');
   </div>
   <div class="btn-row">
     <a class="btn btn--gold" href="<?= e(url('/operator/setup')) ?>">Start the next game</a>
+    <?php if ((int) ($game['is_rehearsal'] ?? 0) === 0): ?>
+      <a class="btn btn--primary" href="<?= e(url('/admin/certificates/' . (int) $game['id'])) ?>" target="_blank" rel="noopener">🏅 Print certificate</a>
+    <?php endif; ?>
     <a class="btn btn--ghost" href="<?= e(url('/admin/games/' . (int) $game['id'])) ?>">Full report</a>
     <button type="button" class="btn btn--ghost" onclick="window.print()">Print</button>
   </div>

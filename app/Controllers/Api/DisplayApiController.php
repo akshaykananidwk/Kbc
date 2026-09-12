@@ -42,6 +42,7 @@ final class DisplayApiController extends Controller
         }
 
         $state['settings'] = $this->displaySettings();
+        $state['idle'] = $this->idleContent($state);
 
         return Response::apiSuccess('Display state.', $state)
             ->withHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -52,7 +53,58 @@ final class DisplayApiController extends Controller
     {
         $state = GameService::make()->displayState();
         $state['settings'] = $this->displaySettings();
+        $state['idle'] = $this->idleContent($state);
         return Response::apiSuccess('Display snapshot.', $state);
+    }
+
+    /**
+     * Leaderboard and sponsors for the idle screen.
+     *
+     * Only built while no question is on air, so a live game never pays for
+     * the extra queries.
+     *
+     * @param array<string,mixed> $state
+     * @return array<string,mixed>
+     */
+    private function idleContent(array $state): array
+    {
+        // Idle covers "no game at all", "game created but not started" and
+        // "game finished" - in the last case the display rotates between the
+        // final result and the hall of fame rather than freezing on one screen.
+        $isIdle = ($state['has_game'] ?? false) === false
+            || ($state['question'] ?? null) === null
+            || ($state['is_finished'] ?? false) === true;
+
+        if (!$isIdle) {
+            return ['active' => false, 'leaderboard' => [], 'summary' => null, 'sponsors' => []];
+        }
+
+        $leaderboard = [];
+        $summary = null;
+        if (SettingsService::bool('show_leaderboard', true)) {
+            $service = \App\Services\LeaderboardService::make();
+            $leaderboard = $service->top(SettingsService::int('leaderboard_count', 8));
+            $summary = $service->summary();
+        }
+
+        $sponsors = [];
+        if (SettingsService::bool('show_sponsors', true)) {
+            foreach ((new \App\Repositories\SponsorRepository())->active() as $sponsor) {
+                $sponsors[] = [
+                    'name'    => (string) $sponsor['name'],
+                    'tagline' => (string) ($sponsor['tagline'] ?? ''),
+                    'tier'    => (string) $sponsor['tier'],
+                    'logo'    => \App\Core\Application::uploadUrl($sponsor['logo_path'] ?? null),
+                ];
+            }
+        }
+
+        return [
+            'active'      => true,
+            'leaderboard' => $leaderboard,
+            'summary'     => $summary,
+            'sponsors'    => $sponsors,
+        ];
     }
 
     /**

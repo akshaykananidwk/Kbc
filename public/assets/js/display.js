@@ -75,6 +75,7 @@
   var timerRunning = false;
   var timerSyncedAt = 0;
   var lastTickSecond = -1;
+  var chequeShownFor = null;
 
   function syncTimer() {
     timerRemaining = state.timer ? state.timer.remaining_ms : 0;
@@ -152,6 +153,7 @@
     // Question + options
     setText('dQuestion', hasQuestion ? state.question.text : '');
     renderQuestionMedia(hasQuestion ? state.question : null);
+    renderIdle();
     renderOptions();
     renderLadder();
     renderLifelines();
@@ -232,6 +234,102 @@
     if (node) node.textContent = value === null || value === undefined ? '' : String(value);
   }
 
+  /* --- Idle screen: hall of fame and sponsors ----------------------------- */
+  var idlePanels = [];
+  var idleIndex = 0;
+  var idleTimer = null;
+  var idleSignature = '';
+
+  function renderIdle() {
+    var box = el('dIdlePanels');
+    if (!box) return;
+
+    var idle = state.idle || { active: false, leaderboard: [], sponsors: [] };
+    var boardPanel = el('dLeaderboardPanel');
+    var sponsorPanel = el('dSponsorPanel');
+
+    var hasBoard = idle.active && settings.show_leaderboard !== false && (idle.leaderboard || []).length > 0;
+    var hasSponsors = idle.active && settings.show_sponsors !== false && (idle.sponsors || []).length > 0;
+
+    if (!hasBoard && !hasSponsors) {
+      box.hidden = true;
+      stopIdleRotation();
+      return;
+    }
+    box.hidden = false;
+
+    // Only rebuild when the content actually changed.
+    var signature = JSON.stringify([hasBoard, hasSponsors, (idle.leaderboard || []).length, (idle.sponsors || []).length,
+      (idle.leaderboard || []).map(function (r) { return r.name + r.prize; }).join(',')]);
+
+    if (signature !== idleSignature) {
+      idleSignature = signature;
+
+      if (hasBoard) {
+        var list = el('dLeaderboard');
+        list.innerHTML = '';
+        idle.leaderboard.forEach(function (row) {
+          var li = document.createElement('li');
+          li.innerHTML =
+            '<span class="d-board__rank">' + row.rank + '</span>' +
+            (row.photo ? '<img class="d-board__photo" src="' + esc(row.photo) + '" alt="">' : '') +
+            '<span><span class="d-board__name">' + esc(row.name) + '</span>' +
+            (row.city ? '<span class="d-board__city"> · ' + esc(row.city) + '</span>' : '') + '</span>' +
+            '<span class="d-board__prize">' + esc(row.prize_label) + '</span>' +
+            '<span class="d-board__questions">' + row.questions + ' ✓</span>';
+          list.appendChild(li);
+        });
+
+        var summary = idle.summary;
+        setText('dBoardSummary', summary
+          ? summary.games + ' games played · ' + summary.players + ' players · ' +
+            summary.total_prize_label + ' awarded'
+          : '');
+      }
+
+      if (hasSponsors) {
+        var wrap = el('dSponsors');
+        wrap.innerHTML = '';
+        idle.sponsors.forEach(function (sponsor) {
+          var node = document.createElement('div');
+          node.className = 'd-sponsor' + (sponsor.tier === 'title' ? ' d-sponsor--title' : '');
+          node.innerHTML =
+            (sponsor.logo ? '<img src="' + esc(sponsor.logo) + '" alt="">' : '') +
+            '<span class="d-sponsor__name">' + esc(sponsor.name) + '</span>' +
+            (sponsor.tagline ? '<span class="d-sponsor__tagline">' + esc(sponsor.tagline) + '</span>' : '');
+          wrap.appendChild(node);
+        });
+      }
+
+      idlePanels = [];
+      if (hasBoard) idlePanels.push(boardPanel);
+      if (hasSponsors) idlePanels.push(sponsorPanel);
+      idleIndex = 0;
+      startIdleRotation();
+    }
+  }
+
+  function showIdlePanel(index) {
+    idlePanels.forEach(function (panel, i) { panel.hidden = i !== index; });
+  }
+
+  function startIdleRotation() {
+    stopIdleRotation();
+    if (idlePanels.length === 0) return;
+    showIdlePanel(0);
+    if (idlePanels.length === 1) return;
+
+    var every = Math.max(3000, settings.idle_rotate_ms || 9000);
+    idleTimer = window.setInterval(function () {
+      idleIndex = (idleIndex + 1) % idlePanels.length;
+      showIdlePanel(idleIndex);
+    }, every);
+  }
+
+  function stopIdleRotation() {
+    if (idleTimer) { window.clearInterval(idleTimer); idleTimer = null; }
+  }
+
   function renderOptions() {
     var box = el('dOptions');
     if (!box) return;
@@ -301,7 +399,7 @@
 
   /* --- Overlays ------------------------------------------------------------ */
   function hideOverlays() {
-    ['dResultOverlay', 'dPollOverlay', 'dExpertOverlay', 'dFinalOverlay'].forEach(function (id) {
+    ['dResultOverlay', 'dPollOverlay', 'dExpertOverlay', 'dFinalOverlay', 'dChequeOverlay'].forEach(function (id) {
       var node = el(id);
       if (node) node.hidden = true;
     });
@@ -365,12 +463,77 @@
     if (kind === 'correct') { confetti(60); }
   }
 
-  function showFinal() {
+  /** Number to words, so the cheque reads like a real one. */
+  function amountInWords(amount) {
+    amount = Math.floor(Math.abs(amount));
+    if (amount === 0) return 'Zero rupees only';
+
+    var ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+      'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    var tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+    function under100(n) {
+      if (n < 20) return ones[n];
+      return tens[Math.floor(n / 10)] + (n % 10 ? '-' + ones[n % 10] : '');
+    }
+    function under1000(n) {
+      if (n < 100) return under100(n);
+      return ones[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' ' + under100(n % 100) : '');
+    }
+
+    // Indian grouping: crore, lakh, thousand, hundred.
+    var parts = [];
+    var crore = Math.floor(amount / 10000000); amount %= 10000000;
+    var lakh = Math.floor(amount / 100000); amount %= 100000;
+    var thousand = Math.floor(amount / 1000); amount %= 1000;
+
+    if (crore) parts.push(under1000(crore) + ' crore');
+    if (lakh) parts.push(under1000(lakh) + ' lakh');
+    if (thousand) parts.push(under1000(thousand) + ' thousand');
+    if (amount) parts.push(under1000(amount));
+
+    var words = parts.join(' ');
+    return words.charAt(0).toUpperCase() + words.slice(1) + ' rupees only';
+  }
+
+  function showCheque() {
+    hideOverlays();
+    var overlay = el('dChequeOverlay');
+    if (!overlay) return false;
+
+    var won = state.prize ? parseFloat(state.prize.final_prize) : 0;
+    if (won <= 0) return false;
+
+    setText('dChequeOrg', settings.site_name || '');
+    setText('dChequeDate', new Date().toLocaleDateString());
+    setText('dChequePayee', (state.participant && state.participant.name) || '');
+    setText('dChequeAmount', state.prize.final_prize_label);
+    setText('dChequeWords', amountInWords(won));
+
+    overlay.hidden = false;
+    confetti(140);
+
+    // Hold the cheque, then hand over to the congratulations screen.
+    window.setTimeout(function () {
+      var node = el('dChequeOverlay');
+      if (node && !node.hidden) { node.hidden = true; showFinal(true); }
+    }, 8000);
+
+    return true;
+  }
+
+  function showFinal(skipCheque) {
+    var won = state.prize ? parseFloat(state.prize.final_prize) : 0;
+
+    // The cheque comes first on a win, if it is switched on.
+    if (!skipCheque && won > 0 && settings.cheque_animation !== false && !chequeShownFor) {
+      chequeShownFor = state.game_id;
+      if (showCheque()) return;
+    }
+
     hideOverlays();
     var overlay = el('dFinalOverlay');
     if (!overlay) return;
-
-    var won = state.prize ? parseFloat(state.prize.final_prize) : 0;
     setText('dFinalIcon', won > 0 ? '🏆' : '🙏');
     setText('dFinalTitle', won > 0 ? 'અભિનંદન!' : 'આભાર!');
     setText('dFinalName', (state.participant && state.participant.name) || '');

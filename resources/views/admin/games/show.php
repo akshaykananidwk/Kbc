@@ -13,6 +13,9 @@ $view->start('content');
     </p>
   </div>
   <div class="btn-row">
+    <?php if (in_array((string) $game['status'], ['completed','wrong_answer','time_up','quit'], true) && (int) ($game['is_rehearsal'] ?? 0) === 0): ?>
+      <a class="btn btn--gold" href="<?= e(url('/admin/certificates/' . (int) $game['id'])) ?>" target="_blank" rel="noopener">🏅 Certificate</a>
+    <?php endif; ?>
     <a class="btn btn--ghost" href="<?= e(url('/admin/games/' . (int) $game['id'] . '/export')) ?>">Export CSV</a>
     <a class="btn btn--ghost" href="<?= e(url('/admin/games')) ?>">← Back</a>
   </div>

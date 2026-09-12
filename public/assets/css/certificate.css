@@ -1,0 +1,176 @@
+/* ==========================================================================
+   Winner certificate — designed to print on A4 landscape
+   ========================================================================== */
+
+:root {
+  --c-primary: #b3141a;
+  --c-secondary: #f5a623;
+  --c-accent: #ffd76e;
+  --c-ink: #2b1d16;
+  --c-paper: #fffdf8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #e8e0d6;
+  color: var(--c-ink);
+  font-family: "Noto Sans Gujarati", "Noto Sans Devanagari", -apple-system,
+               BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* --- Screen toolbar ------------------------------------------------------- */
+.cert-toolbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: .7rem 1.2rem; background: #fff;
+  border-bottom: 1px solid #ddd2c6; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.cert-toolbar__meta { margin-left: auto; font-size: .82rem; color: #7a6659; font-family: ui-monospace, Menlo, monospace; }
+.btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .5rem .95rem; border-radius: 9px; border: 1px solid transparent;
+  background: #f4ece3; color: var(--c-ink); font: inherit; font-size: .86rem;
+  font-weight: 600; cursor: pointer; text-decoration: none;
+}
+.btn--primary { background: var(--c-primary); color: #fff; }
+.btn--ghost { background: transparent; border-color: #ddd2c6; }
+.btn--sm { padding: .36rem .7rem; font-size: .8rem; }
+.btn:hover { filter: brightness(.96); }
+
+/* --- The sheet ------------------------------------------------------------ */
+.cert-page { padding: 1.6rem 1rem 3rem; display: flex; justify-content: center; }
+
+.cert {
+  width: 297mm; max-width: 100%; aspect-ratio: 297 / 210;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(245,166,35,.16), transparent 42%),
+    radial-gradient(circle at 88% 88%, rgba(179,20,26,.13), transparent 45%),
+    var(--c-paper);
+  box-shadow: 0 14px 44px rgba(0,0,0,.22);
+  padding: 7mm;
+  position: relative;
+}
+
+.cert__border {
+  height: 100%; width: 100%; position: relative;
+  border: 2.6mm solid var(--c-primary);
+  outline: .6mm solid var(--c-secondary);
+  outline-offset: 1.6mm;
+  padding: 8mm 12mm 6mm;
+  display: flex; flex-direction: column;
+  background:
+    repeating-linear-gradient(45deg, rgba(245,166,35,.05) 0 8px, transparent 8px 16px);
+}
+
+/* Festive corner flourishes drawn in CSS - nothing to download */
+.cert__corner {
+  position: absolute; width: 16mm; height: 16mm;
+  border: .9mm solid var(--c-secondary);
+}
+.cert__corner--tl { top: 2mm; left: 2mm; border-right: none; border-bottom: none; border-radius: 6mm 0 0 0; }
+.cert__corner--tr { top: 2mm; right: 2mm; border-left: none; border-bottom: none; border-radius: 0 6mm 0 0; }
+.cert__corner--bl { bottom: 2mm; left: 2mm; border-right: none; border-top: none; border-radius: 0 0 0 6mm; }
+.cert__corner--br { bottom: 2mm; right: 2mm; border-left: none; border-top: none; border-radius: 0 0 6mm 0; }
+
+/* --- Header --------------------------------------------------------------- */
+.cert__head { text-align: center; flex: 0 0 auto; }
+.cert__logo {
+  width: 22mm; height: 22mm; object-fit: cover; border-radius: 50%;
+  border: .8mm solid var(--c-secondary); background: #fff;
+  display: block; margin: 0 auto 2mm;
+}
+.cert__logo--glyph {
+  display: grid; place-items: center; font-size: 12mm; font-weight: 800;
+  color: var(--c-primary); background: linear-gradient(140deg, var(--c-secondary), var(--c-accent));
+}
+.cert__org {
+  font-size: 4.2mm; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--c-primary); margin-bottom: 1mm;
+}
+.cert__title {
+  margin: 0; font-size: 11mm; font-weight: 900; line-height: 1.1;
+  color: var(--c-primary); letter-spacing: .01em;
+}
+.cert__rule {
+  display: flex; align-items: center; justify-content: center; gap: 3mm;
+  margin: 3mm auto 0; color: var(--c-secondary); font-size: 5mm;
+}
+.cert__rule span { height: .6mm; width: 34mm; background: linear-gradient(90deg, transparent, var(--c-secondary)); }
+.cert__rule span:last-child { background: linear-gradient(90deg, var(--c-secondary), transparent); }
+
+/* --- Body ----------------------------------------------------------------- */
+.cert__body { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.cert__lead { font-size: 4.6mm; color: #6b564a; margin: 0 0 2mm; }
+.cert__name {
+  font-size: 15mm; font-weight: 900; margin: 0 0 1mm; line-height: 1.12;
+  color: var(--c-ink);
+  text-decoration: underline; text-decoration-color: var(--c-accent);
+  text-decoration-thickness: 1.2mm; text-underline-offset: 2.4mm;
+}
+.cert__sub { font-size: 4mm; color: #7a6659; margin: 3mm 0 0; }
+.cert__message { font-size: 4.4mm; color: #4a3b33; margin: 4mm auto 0; max-width: 190mm; line-height: 1.55; }
+
+.cert__prize {
+  margin: 5mm auto 0; display: inline-flex; flex-direction: column; gap: .8mm;
+  padding: 3mm 10mm; border-radius: 4mm;
+  background: linear-gradient(135deg, var(--c-primary), #8c0f14); color: #fff;
+  box-shadow: 0 3mm 8mm rgba(179,20,26,.28);
+}
+.cert__prize-label { font-size: 3.4mm; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+.cert__prize-amount { font-size: 11mm; font-weight: 900; line-height: 1; color: var(--c-accent); }
+
+.cert__facts { display: flex; justify-content: center; gap: 12mm; margin-top: 5mm; flex-wrap: wrap; }
+.cert__fact { display: flex; flex-direction: column; gap: .6mm; }
+.cert__fact-label { font-size: 3.2mm; letter-spacing: .1em; text-transform: uppercase; color: #9a8577; }
+.cert__fact-value { font-size: 4.4mm; font-weight: 700; }
+
+/* --- Footer --------------------------------------------------------------- */
+.cert__foot {
+  flex: 0 0 auto; display: flex; align-items: flex-end;
+  justify-content: space-between; gap: 8mm; margin-top: 4mm;
+}
+.cert__sign { text-align: center; min-width: 55mm; position: relative; }
+.cert__sign-image { max-height: 14mm; max-width: 50mm; display: block; margin: 0 auto -2mm; }
+.cert__sign-line { height: .5mm; background: var(--c-ink); opacity: .6; margin-bottom: 1.6mm; }
+.cert__sign-name { font-size: 4.2mm; font-weight: 700; }
+.cert__sign-role { font-size: 3.4mm; color: #7a6659; }
+
+.cert__seal { flex: 0 0 auto; }
+.cert__seal img { width: 26mm; height: 26mm; object-fit: contain; }
+.cert__seal-glyph {
+  width: 26mm; height: 26mm; border-radius: 50%;
+  border: .9mm double var(--c-primary); color: var(--c-primary);
+  display: grid; place-items: center; text-align: center; line-height: 1.15;
+  transform: rotate(-9deg);
+}
+.cert__seal-glyph span { font-size: 6mm; display: block; }
+.cert__seal-glyph small { font-size: 2.6mm; font-weight: 700; letter-spacing: .04em; }
+
+.cert__serial { text-align: right; min-width: 55mm; }
+.cert__serial-label { display: block; font-size: 3.2mm; letter-spacing: .1em; text-transform: uppercase; color: #9a8577; }
+.cert__serial-value { font-size: 4.4mm; font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
+
+/* --- Print ---------------------------------------------------------------- */
+@media print {
+  @page { size: A4 landscape; margin: 0; }
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .cert-page { padding: 0; }
+  .cert {
+    width: 297mm; height: 210mm; aspect-ratio: auto;
+    box-shadow: none; page-break-after: always;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+}
+
+@media (max-width: 900px) {
+  .cert { padding: 4mm; }
+  .cert__border { padding: 5mm 6mm; }
+  .cert__title { font-size: 8mm; }
+  .cert__name { font-size: 10mm; }
+  .cert__prize-amount { font-size: 8mm; }
+  .cert__foot { flex-direction: column; align-items: center; gap: 4mm; }
+  .cert__serial { text-align: center; }
+}

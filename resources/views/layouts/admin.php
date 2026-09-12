@@ -81,11 +81,17 @@ $isAdmin = ($user['role_slug'] ?? '') === 'admin';
       <a class="sidebar__link <?= active_when('/admin/lifelines') ?>" href="<?= e(url('/admin/lifelines')) ?>">
         <span class="sidebar__icon">♥</span> Lifelines
       </a>
+      <a class="sidebar__link <?= active_when('/admin/sponsors') ?>" href="<?= e(url('/admin/sponsors')) ?>">
+        <span class="sidebar__icon">★</span> Sponsors
+      </a>
       <?php endif; ?>
 
       <div class="sidebar__group">Insights</div>
       <a class="sidebar__link <?= active_when('/admin/reports') ?>" href="<?= e(url('/admin/reports')) ?>">
         <span class="sidebar__icon">◫</span> Reports
+      </a>
+      <a class="sidebar__link <?= active_when('/admin/certificates') ?>" href="<?= e(url('/admin/certificates')) ?>">
+        <span class="sidebar__icon">🏅</span> Certificates
       </a>
 
       <?php if ($isAdmin): ?>

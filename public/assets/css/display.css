@@ -340,3 +340,96 @@ html, body {
 }
 .d-audio-hint[hidden] { display: none; }
 @keyframes d-hintpulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+
+/* --- Idle screen: hall of fame and sponsors -------------------------------- */
+.d-idle { width: min(120vmin, 94%); margin-top: 1vmin; }
+.d-idle[hidden] { display: none; }
+.d-idle__panel { animation: d-fadein .5s ease-out; }
+.d-idle__panel[hidden] { display: none; }
+.d-idle__title {
+  font-size: 3.2vmin; font-weight: 800; margin: 0 0 1.6vmin;
+  color: var(--d-accent); letter-spacing: .02em;
+}
+
+.d-board { list-style: none; margin: 0; padding: 0; display: grid; gap: .8vmin; }
+.d-board li {
+  display: flex; align-items: center; gap: 1.6vmin;
+  background: rgba(0,0,0,.34); border: .2vmin solid rgba(245,166,35,.3);
+  border-radius: 1.4vmin; padding: 1vmin 1.8vmin; font-size: 2.1vmin;
+}
+.d-board li:nth-child(1) { border-color: var(--d-accent); background: rgba(245,166,35,.18); }
+.d-board__rank {
+  width: 4.4vmin; height: 4.4vmin; flex: 0 0 4.4vmin; border-radius: 50%;
+  background: rgba(245,166,35,.25); color: var(--d-accent);
+  display: grid; place-items: center; font-weight: 900; font-size: 2vmin;
+}
+.d-board li:nth-child(1) .d-board__rank { background: var(--d-accent); color: #6d0b10; }
+.d-board__photo { width: 5vmin; height: 5vmin; border-radius: 1vmin; object-fit: cover; flex: 0 0 auto; }
+.d-board__name { font-weight: 800; }
+.d-board__city { font-size: 1.5vmin; opacity: .7; }
+.d-board__prize { margin-left: auto; font-weight: 900; color: var(--d-accent); font-size: 2.5vmin; }
+.d-board__questions { font-size: 1.5vmin; opacity: .72; margin-left: 1.2vmin; }
+.d-idle__summary { margin-top: 1.6vmin; font-size: 1.9vmin; opacity: .78; }
+
+.d-sponsors {
+  display: flex; flex-wrap: wrap; gap: 2vmin; justify-content: center; align-items: center;
+}
+.d-sponsor {
+  background: rgba(255,255,255,.94); border-radius: 1.6vmin; padding: 1.6vmin 2.4vmin;
+  display: flex; flex-direction: column; align-items: center; gap: .6vmin;
+  min-width: 20vmin; box-shadow: 0 .8vmin 2.6vmin rgba(0,0,0,.35);
+}
+.d-sponsor img { max-height: 9vmin; max-width: 26vmin; object-fit: contain; }
+.d-sponsor__name { color: #2b1d16; font-weight: 800; font-size: 2vmin; }
+.d-sponsor__tagline { color: #6b564a; font-size: 1.4vmin; }
+.d-sponsor--title { padding: 2.4vmin 3.4vmin; border: .4vmin solid var(--d-accent); }
+.d-sponsor--title img { max-height: 13vmin; }
+
+/* --- Big cheque ------------------------------------------------------------ */
+.d-cheque {
+  width: min(118vmin, 92%); aspect-ratio: 5 / 2.2;
+  background: linear-gradient(135deg, #fffdf5 0%, #fff4dd 100%);
+  border-radius: 2.4vmin; color: #2b1d16; padding: 3.4vmin 4vmin;
+  display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 3vmin 9vmin rgba(0,0,0,.62);
+  border: .6vmin solid var(--d-secondary);
+  position: relative; overflow: hidden;
+  animation: d-cheque-in .8s cubic-bezier(.22,1.3,.36,1);
+}
+.d-cheque::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(-45deg, rgba(179,20,26,.05) 0 12px, transparent 12px 24px);
+  pointer-events: none;
+}
+@keyframes d-cheque-in {
+  0% { transform: translateY(16vmin) rotate(-4deg) scale(.82); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+.d-cheque__head { display: flex; justify-content: space-between; align-items: baseline; }
+.d-cheque__org { font-size: 2.6vmin; font-weight: 900; color: var(--d-primary); letter-spacing: .04em; }
+.d-cheque__date { font-size: 1.9vmin; color: #6b564a; }
+.d-cheque__row { display: flex; align-items: baseline; gap: 2vmin; }
+.d-cheque__label {
+  font-size: 1.7vmin; text-transform: uppercase; letter-spacing: .16em;
+  color: #9a8577; font-weight: 700; flex: 0 0 14vmin;
+}
+.d-cheque__payee {
+  font-size: 5.4vmin; font-weight: 900; flex: 1;
+  border-bottom: .3vmin dashed rgba(43,29,22,.3); padding-bottom: .4vmin;
+}
+.d-cheque__amount {
+  font-size: 7vmin; font-weight: 900; color: var(--d-primary);
+  background: rgba(245,166,35,.22); padding: .4vmin 2.4vmin; border-radius: 1.2vmin;
+}
+.d-cheque__foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 2vmin; }
+.d-cheque__words { font-size: 1.9vmin; color: #6b564a; font-style: italic; max-width: 62%; }
+.d-cheque__sign {
+  font-size: 2.2vmin; font-weight: 800; color: var(--d-primary);
+  border-top: .25vmin solid rgba(43,29,22,.4); padding-top: .8vmin; min-width: 30vmin; text-align: center;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .d-board li { font-size: 2.6vmin; }
+  .d-cheque__payee { font-size: 6vmin; }
+  .d-cheque__amount { font-size: 7.4vmin; }
+}

@@ -75,6 +75,20 @@ $config = [
   </div>
   <div class="d-welcome__title"><?= e($welcomeHeading) ?></div>
   <div class="d-welcome__sub"><?= e($welcomeSub !== '' ? $welcomeSub : $siteName) ?></div>
+
+  <!-- Idle panels: hall of fame and sponsors, rotated by the display script -->
+  <div class="d-idle" id="dIdlePanels" hidden>
+    <section class="d-idle__panel" id="dLeaderboardPanel" hidden>
+      <h2 class="d-idle__title">🏆 વિજેતાઓ &middot; Hall of Fame</h2>
+      <ol class="d-board" id="dLeaderboard"></ol>
+      <div class="d-idle__summary" id="dBoardSummary"></div>
+    </section>
+
+    <section class="d-idle__panel" id="dSponsorPanel" hidden>
+      <h2 class="d-idle__title">આભાર &middot; Our Sponsors</h2>
+      <div class="d-sponsors" id="dSponsors"></div>
+    </section>
+  </div>
 </div>
 
 <!-- Live game -->
@@ -148,6 +162,28 @@ $config = [
   <div class="d-overlay__sub">Final winnings</div>
   <div class="d-overlay__amount" id="dFinalAmount"></div>
   <div class="d-overlay__gift" id="dFinalGifts"></div>
+</div>
+
+<!-- Big cheque overlay -->
+<div class="d-overlay" id="dChequeOverlay" hidden>
+  <div class="d-cheque">
+    <div class="d-cheque__head">
+      <span class="d-cheque__org" id="dChequeOrg"></span>
+      <span class="d-cheque__date" id="dChequeDate"></span>
+    </div>
+    <div class="d-cheque__row">
+      <span class="d-cheque__label">Pay to</span>
+      <span class="d-cheque__payee" id="dChequePayee"></span>
+    </div>
+    <div class="d-cheque__row">
+      <span class="d-cheque__label">Amount</span>
+      <span class="d-cheque__amount" id="dChequeAmount"></span>
+    </div>
+    <div class="d-cheque__foot">
+      <span class="d-cheque__words" id="dChequeWords"></span>
+      <span class="d-cheque__sign">ગણપતિ બાપા ક્વિઝ શો</span>
+    </div>
+  </div>
 </div>
 
 <!-- Audience poll overlay -->

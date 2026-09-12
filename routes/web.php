@@ -97,6 +97,16 @@ $router->group('/admin', ['installed', 'auth', 'noindex'], function (Router $rou
     $router->get('/games/{id:\d+}/export', 'App\Controllers\Admin\GameHistoryController@export');
     $router->post('/games/{id:\d+}/delete', 'App\Controllers\Admin\GameHistoryController@destroy', ['admin', 'csrf']);
 
+    // Sponsors
+    $router->get('/sponsors', 'App\Controllers\Admin\SponsorController@index', ['admin']);
+    $router->post('/sponsors', 'App\Controllers\Admin\SponsorController@store', ['admin', 'csrf']);
+    $router->post('/sponsors/{id:\d+}', 'App\Controllers\Admin\SponsorController@update', ['admin', 'csrf']);
+    $router->post('/sponsors/{id:\d+}/delete', 'App\Controllers\Admin\SponsorController@destroy', ['admin', 'csrf']);
+
+    // Certificates
+    $router->get('/certificates', 'App\Controllers\Admin\CertificateController@index');
+    $router->get('/certificates/{id:\d+}', 'App\Controllers\Admin\CertificateController@show');
+
     // Reports
     $router->get('/reports', 'App\Controllers\Admin\ReportController@index');
     $router->get('/reports/games.csv', 'App\Controllers\Admin\ReportController@gamesCsv');
