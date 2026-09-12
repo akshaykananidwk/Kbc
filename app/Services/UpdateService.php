@@ -479,12 +479,19 @@ final class UpdateService
         }
     }
 
-    /** Restore the files captured by snapshotApplicationFiles(). */
+    /**
+     * Restore the files captured by snapshotApplicationFiles().
+     *
+     * Restores everything the snapshot holds and then removes any file the
+     * failed update introduced, so a half-applied release (a broken new
+     * migration, for example) cannot linger and be picked up later.
+     */
     private function rollbackFiles(string $backupDir): int
     {
         $appRoot = Application::instance()->rootPath();
         $protected = $this->protectedPaths();
         $restored = 0;
+        $snapshotted = [];
 
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($backupDir, \FilesystemIterator::SKIP_DOTS),
@@ -497,6 +504,7 @@ final class UpdateService
             if ($relative === '' || $this->isProtected($relative, $protected)) {
                 continue;
             }
+            $snapshotted[$relative] = true;
             $target = $appRoot . '/' . $relative;
 
             if ($item->isDir()) {
@@ -514,7 +522,48 @@ final class UpdateService
             }
         }
 
+        $this->removeFilesAddedByUpdate($appRoot, $snapshotted, $protected);
+
         return $restored;
+    }
+
+    /**
+     * Delete files that exist now but were not in the pre-update snapshot.
+     * Protected paths (.env, uploads, storage) are never considered, so user
+     * data added during the update is safe.
+     *
+     * @param array<string,bool> $snapshotted
+     * @param array<int,string>  $protected
+     */
+    private function removeFilesAddedByUpdate(string $appRoot, array $snapshotted, array $protected): void
+    {
+        if ($snapshotted === []) {
+            // No usable snapshot - deleting anything would be guesswork.
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($appRoot, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            /** @var \SplFileInfo $item */
+            $relative = ltrim(str_replace($appRoot, '', $item->getPathname()), '/');
+            if ($relative === ''
+                || isset($snapshotted[$relative])
+                || $this->isProtected($relative, $protected)
+                || str_starts_with($relative, '.git/')
+            ) {
+                continue;
+            }
+
+            if ($item->isFile()) {
+                @unlink($item->getPathname());
+            } elseif ($item->isDir() && (scandir($item->getPathname()) ?: []) === ['.', '..']) {
+                @rmdir($item->getPathname());
+            }
+        }
     }
 
     /** @param array<int,string> $patterns */
