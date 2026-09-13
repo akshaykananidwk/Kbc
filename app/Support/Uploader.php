@@ -81,9 +81,9 @@ final class Uploader
     {
         return 'Your server currently accepts uploads up to '
             . Str::humanBytes(self::serverLimit())
-            . '. To allow larger music files, raise upload_max_filesize and post_max_size '
-            . '(the .user.ini file shipped with the app sets them to 64M; some hosts need '
-            . 'the change made in the hosting control panel instead).';
+            . '. To allow larger music files, raise upload_max_filesize and post_max_size: '
+            . 'Settings -> Sound has a button that writes a .user.ini for you, and shows the '
+            . 'text to upload by hand if your host will not let PHP write it.';
     }
 
     /**

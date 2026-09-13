@@ -1,7 +1,7 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Date:** 13 September 2026
 
 ## Test environment
@@ -26,7 +26,7 @@ development tool only — the application itself still has no Node dependency.
 
 ## Result
 
-**309 checks executed, 309 passed, 0 failed**, plus **30 browser layout checks, all passed**.
+**322 checks executed, 322 passed, 0 failed**, plus **30 browser layout checks, all passed**.
 
 Per-check output is in [`verification-results.md`](verification-results.md).
 
@@ -151,13 +151,17 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Uploads | Admin guidance | Settings states the limit in force before anything is uploaded | PASS |
 | New game | Open game left behind | Refusal names the blocking game and its participant; one confirmation ends it and creates the new game | PASS |
 | New game | Audit | The automatic takeover is recorded as `game.replaced`; the old game is closed, never deleted | PASS |
+| Updater | Locked-down host | A server-config file PHP may not write (`.htaccess`, `.user.ini`) is reported as a warning and the update still completes; the host's own file is left untouched | PASS |
+| Updater | Genuine write failure | An application file that cannot be written still fails the update and names the folder to check | PASS |
+| PHP limits | Self-service | Settings writes a `.user.ini` where the host allows it, and shows the exact text to upload where it does not | PASS |
+| PHP limits | Packaging | `.user.ini` is never shipped in the package — only `docs/user.ini.example` — so no update can be blocked by it | PASS |
 | New game | Exhausted question bank | Reported clearly, and a per-game "reuse questions" option gets the show on air without changing the global setting | PASS |
 
 ---
 
 ## What was verified how
 
-**Automated** (`tests/verify.php`, 309 assertions; `tests/layout.js`, 30 browser assertions): everything in the table above
+**Automated** (`tests/verify.php`, 322 assertions; `tests/layout.js`, 30 browser assertions): everything in the table above
 except where noted below. The suite drives the real HTTP application with real
 cookies and CSRF tokens, and asserts against the live database.
 
@@ -210,12 +214,12 @@ throwaway branch carrying a deliberately broken migration.
    runner calls that migration's own `down()` to clean up. Migrations should
    therefore always implement `down()` properly.
 3. **Music needs the server to allow it.** PHP's stock limit is 2 MB, which is
-   smaller than most songs. The `.user.ini` shipped with the app asks for 64M
-   and works on PHP-FPM and CGI hosting; `.htaccess` covers mod_php. If your
-   host ignores both, raise `upload_max_filesize` and `post_max_size` in the
-   hosting control panel. **Admin → Settings → Sound** always shows the limit
-   actually in force, and an oversized upload now says so instead of failing
-   silently.
+   smaller than most songs. **Admin → Settings → Sound** shows the limit in
+   force and, when it is low, offers to write a `.user.ini` asking for 64M
+   (PHP-FPM and CGI hosting read that file; `.htaccess` covers mod_php). Where
+   the host will not let PHP write it, the same panel shows the text to upload
+   by hand. That file is deliberately not part of the update package: a host
+   that blocks it would otherwise block every update.
 4. **Live audience voting needs everyone on the same network.** The QR code
    contains the address the browser is using, so the phones must be able to
    reach that address. On a venue Wi-Fi set `app_url` in **Settings → General**

@@ -41,27 +41,27 @@
 | 5. CRUD modules | Lifelines renders | HTTP 200, 17397b | PASS |
 | 5. CRUD modules | Game history renders | HTTP 200, 7476b | PASS |
 | 5. CRUD modules | Reports renders | HTTP 200, 9437b | PASS |
-| 5. CRUD modules | Settings renders | HTTP 200, 99131b | PASS |
+| 5. CRUD modules | Settings renders | HTTP 200, 100229b | PASS |
 | 5. CRUD modules | Users renders | HTTP 200, 7052b | PASS |
 | 5. CRUD modules | Backups renders | HTTP 200, 7349b | PASS |
 | 5. CRUD modules | Updates renders | HTTP 200, 14916b | PASS |
-| 5. CRUD modules | Audit log renders | HTTP 200, 25693b | PASS |
+| 5. CRUD modules | Audit log renders | HTTP 200, 25883b | PASS |
 | 5. CRUD modules | Operator console renders | HTTP 200, 11689b | PASS |
 | 5. CRUD modules | Operator setup renders | HTTP 200, 13375b | PASS |
 | 5. CRUD modules | Display screen renders | HTTP 200, 10223b | PASS |
 | 5. CRUD modules | Home page renders | HTTP 200, 2210b | PASS |
-| 5. CRUD modules | question created | id 69 | PASS |
+| 5. CRUD modules | question created | id 78 | PASS |
 | 5. CRUD modules | question options stored | 4 | PASS |
 | 5. CRUD modules | Gujarati text stored unchanged | એક | PASS |
 | 5. CRUD modules | question updated | D | PASS |
-| 5. CRUD modules | question duplicated | copy id 70 | PASS |
+| 5. CRUD modules | question duplicated | copy id 79 | PASS |
 | 5. CRUD modules | unused question deleted | as expected | PASS |
-| 5. CRUD modules | participant created | id 34 | PASS |
+| 5. CRUD modules | participant created | id 40 | PASS |
 | 5. CRUD modules | registration number auto-assigned | as expected | PASS |
 | 5. CRUD modules | prize level created | level 12 = 640000 | PASS |
 | 5. CRUD modules | guaranteed flag stored | 1 | PASS |
 | 5. CRUD modules | prize level deleted | as expected | PASS |
-| 5. CRUD modules | gift created | id 23 | PASS |
+| 5. CRUD modules | gift created | id 26 | PASS |
 | 5. CRUD modules | gift deleted | as expected | PASS |
 | 5. CRUD modules | CSV export export | HTTP 200, UTF-8 BOM present | PASS |
 | 5. CRUD modules | CSV export games.csv | HTTP 200, UTF-8 BOM present | PASS |
@@ -74,26 +74,26 @@
 | 6. Game engine | a question is on air | આ સંગીત કયા વાદ્યનું છે? | PASS |
 | 6. Game engine | timer is loaded but not running | 30000ms | PASS |
 | 6. Game engine | timer starts | running | PASS |
-| 6. Game engine | timer counts down in real time | 29388ms left of 30000ms after 600ms | PASS |
+| 6. Game engine | timer counts down in real time | 29389ms left of 30000ms after 600ms | PASS |
 | 6. Game engine | timer pauses | TIMER_PAUSED | PASS |
-| 6. Game engine | paused timer does not drift | held at 29375ms | PASS |
+| 6. Game engine | paused timer does not drift | held at 29379ms | PASS |
 | 6. Game engine | timer resumes | running | PASS |
 | 6. Game engine | timer resets to full | 30000 | PASS |
 | 6. Game engine | 50:50 removes two options | 2 | PASS |
-| 6. Game engine | 50:50 keeps the correct answer | B,D kept | PASS |
+| 6. Game engine | 50:50 keeps the correct answer | A,B kept | PASS |
 | 6. Game engine | a lifeline cannot be used twice | The 50:50 lifeline has already been used. | PASS |
 | 6. Game engine | audience poll totals 100% | 100 | PASS |
 | 6. Game engine | poll gives 0% to options 50:50 removed | as expected | PASS |
-| 6. Game engine | expert suggests a surviving option | suggested D | PASS |
+| 6. Game engine | expert suggests a surviving option | suggested B | PASS |
 | 7. Display screen security (the critical requirement) | correct answer is null before the reveal | present and null | PASS |
 | 7. Display screen security (the critical requirement) | explanation is null before the reveal | present and null | PASS |
 | 7. Display screen security (the critical requirement) | no "private" section in the display payload | as expected | PASS |
 | 7. Display screen security (the critical requirement) | the string "correct_option" appears nowhere | as expected | PASS |
 | 7. Display screen security (the critical requirement) | no password or token data anywhere | as expected | PASS |
-| 7. Display screen security (the critical requirement) | options removed by 50:50 are null, not hidden client-side | A = null | PASS |
+| 7. Display screen security (the critical requirement) | options removed by 50:50 are null, not hidden client-side | C = null | PASS |
 | 7. Display screen security (the critical requirement) | the operator DOES receive the correct answer at the same moment | operator sees B | PASS |
-| 8. Answer flow | an option removed by 50:50 cannot be selected | Option A was removed by the 50:50 lifeline. | PASS |
-| 8. Answer flow | option selected | D | PASS |
+| 8. Answer flow | an option removed by 50:50 cannot be selected | Option C was removed by the 50:50 lifeline. | PASS |
+| 8. Answer flow | option selected | A | PASS |
 | 8. Answer flow | selection can be changed before locking | B | PASS |
 | 8. Answer flow | reveal is refused before the answer is locked | Lock the answer before revealing the result. | PASS |
 | 8. Answer flow | answer locks | locked | PASS |
@@ -102,7 +102,7 @@
 | 8. Answer flow | correct answer STILL hidden after locking | still null | PASS |
 | 8. Answer flow | display shows the answer as locked | as expected | PASS |
 | 8. Answer flow | operator override unlocks the answer | unlocked | PASS |
-| 8. Answer flow | the override is written to the audit log | 18 | PASS |
+| 8. Answer flow | the override is written to the audit log | 21 | PASS |
 | 8. Answer flow | correct answer gives state CORRECT | CORRECT | PASS |
 | 8. Answer flow | prize awarded for level 1 | 500 | PASS |
 | 8. Answer flow | correct answer IS released after the reveal | B | PASS |
@@ -142,14 +142,14 @@
 | 12. Game reset and completion | timer expires without any client action | TIME_UP | PASS |
 | 12. Game reset and completion | time up is recorded as a timeout | timeout | PASS |
 | 12. Game reset and completion | time up ends the game | time_up | PASS |
-| 13. Backup and restore | database backup created | backup_2026-09-13_13-13-55_db.zip (32.04 KB) | PASS |
+| 13. Backup and restore | database backup created | backup_2026-09-13_13-24-09_db.zip (35.39 KB) | PASS |
 | 13. Backup and restore | backup contains a manifest | as expected | PASS |
 | 13. Backup and restore | dump contains every table | 29 CREATE TABLE statements | PASS |
 | 13. Backup and restore | data destroyed before the restore | as expected | PASS |
 | 13. Backup and restore | restore brings the rows back | 15 | PASS |
-| 13. Backup and restore | a safety backup was taken before restoring | backup_2026-09-13_13-13-55-1_db.zip | PASS |
+| 13. Backup and restore | a safety backup was taken before restoring | backup_2026-09-13_13-24-09-1_db.zip | PASS |
 | 13. Backup and restore | Gujarati text survives backup and restore byte for byte | આ સંગીત કયા વાદ્યનું છે? | PASS |
-| 13. Backup and restore | files backup created | backup_2026-09-13_13-13-55_files.zip (375.05 KB, 215 files) | PASS |
+| 13. Backup and restore | files backup created | backup_2026-09-13_13-24-09_files.zip (380.63 KB, 216 files) | PASS |
 | 13. Backup and restore | files backup contains the application | as expected | PASS |
 | 13. Backup and restore | files backup excludes existing backups | as expected | PASS |
 | 14. Migrations, cache and the updater | no migrations are pending | [] | PASS |
@@ -166,13 +166,13 @@
 | 14. Migrations, cache and the updater | protected path rule: index.php | false | PASS |
 | 14. Migrations, cache and the updater | update check runs without a repository configured | not configured (expected on a fresh install) | PASS |
 | 14. Migrations, cache and the updater | cache clear API works | Cache cleared. 0 entr(ies) removed. Uploads and the database were not touched. | PASS |
-| 15. Audit log | logged: login | 63 entries | PASS |
-| 15. Audit log | logged: game.created | 132 entries | PASS |
-| 15. Audit log | logged: game.answer_locked | 482 entries | PASS |
-| 15. Audit log | logged: game.result_revealed | 479 entries | PASS |
-| 15. Audit log | logged: game.reset | 16 entries | PASS |
-| 15. Audit log | logged: question.created | 37 entries | PASS |
-| 15. Audit log | audit entries record an IP address | 710 entries with an IP | PASS |
+| 15. Audit log | logged: login | 78 entries | PASS |
+| 15. Audit log | logged: game.created | 169 entries | PASS |
+| 15. Audit log | logged: game.answer_locked | 578 entries | PASS |
+| 15. Audit log | logged: game.result_revealed | 575 entries | PASS |
+| 15. Audit log | logged: game.reset | 19 entries | PASS |
+| 15. Audit log | logged: question.created | 43 entries | PASS |
+| 15. Audit log | audit entries record an IP address | 838 entries with an IP | PASS |
 | 15. Audit log | no secrets written to the audit log | as expected | PASS |
 | 16. Responsive and accessibility markup | Admin declares a viewport | as expected | PASS |
 | 16. Responsive and accessibility markup | Operator declares a viewport | as expected | PASS |
@@ -185,9 +185,9 @@
 | 17. Media settings (the inline upload fix) | music settings exist | intro and background music fields | PASS |
 | 17. Media settings (the inline upload fix) | no free-text path box for a sound setting | old text input is gone | PASS |
 | 17. Media settings (the inline upload fix) | music uploads over AJAX | File uploaded. | PASS |
-| 17. Media settings (the inline upload fix) | the uploaded music is stored in its setting | uploads/branding/20260913-096e43772581c68fcce54655.mp3 | PASS |
-| 17. Media settings (the inline upload fix) | the file really exists on disk | 20260913-096e43772581c68fcce54655.mp3 | PASS |
-| 17. Media settings (the inline upload fix) | the display API serves the music URL | /public/uploads/branding/20260913-096e43772581c68fcce54655.mp3 | PASS |
+| 17. Media settings (the inline upload fix) | the uploaded music is stored in its setting | uploads/branding/20260913-205f8428849b10ab77427553.mp3 | PASS |
+| 17. Media settings (the inline upload fix) | the file really exists on disk | 20260913-205f8428849b10ab77427553.mp3 | PASS |
+| 17. Media settings (the inline upload fix) | the display API serves the music URL | /public/uploads/branding/20260913-205f8428849b10ab77427553.mp3 | PASS |
 | 17. Media settings (the inline upload fix) | a PHP file renamed to .mp3 is refused | The file content does not match its extension. | PASS |
 | 17. Media settings (the inline upload fix) | music can be removed again | as expected | PASS |
 | 17. Media settings (the inline upload fix) | the setting is cleared | as expected | PASS |
@@ -228,7 +228,7 @@
 | 22. QR codes | QR endpoint serves register | HTTP 200 | PASS |
 | 22. QR codes | QR endpoint serves display | HTTP 200 | PASS |
 | 22. QR codes | an unknown QR target is refused | 404 | PASS |
-| 23. Live audience voting | voting opens with a short code | 3SHBLR | PASS |
+| 23. Live audience voting | voting opens with a short code | 8KDBAM | PASS |
 | 23. Live audience voting | the code reaches the display | as expected | PASS |
 | 23. Live audience voting | the voting page opens on a phone | 200 | PASS |
 | 23. Live audience voting | a code of the wrong length is not routed at all | 404 | PASS |
@@ -291,15 +291,15 @@
 | 28. Screen fit and real music uploads | the settings page states the real limit | as expected | PASS |
 | 28. Screen fit and real music uploads | the upload control knows the limit before sending | as expected | PASS |
 | 28. Screen fit and real music uploads | a real 1.8 MB song uploads | File uploaded. | PASS |
-| 28. Screen fit and real music uploads | the song is stored and served | uploads/branding/20260913-8d39a18c3f0ec23cd431785d.mp3 | PASS |
+| 28. Screen fit and real music uploads | the song is stored and served | uploads/branding/20260913-9bbbbd3770e608c911710003.mp3 | PASS |
 | 28. Screen fit and real music uploads | a stock 1 MB server advertises its real limit | admin is told before trying | PASS |
 | 28. Screen fit and real music uploads | an oversized upload is refused, not silently lost | 413 | PASS |
-| 28. Screen fit and real music uploads | and the message says exactly what to change | That file is too big for this server, so nothing was received. Your server currently accepts uploads up to 1 MB. To allow larger music files, raise upload_max_filesize and post_max_size (the .user.ini file shipped with the app sets them to 64M; some hosts need the change made in the hosting control panel instead). | PASS |
-| 29. Starting a game never dead-ends | a game is created | GQ260913-29A5 | PASS |
-| 29. Starting a game never dead-ends | a second game is refused while one is open | Game GQ260913-29A5 is still open for Rajesh Patel. End it and start the new game? | PASS |
-| 29. Starting a game never dead-ends | the refusal names the game that is blocking | GQ260913-29A5 | PASS |
+| 28. Screen fit and real music uploads | and the message says exactly what to change | That file is too big for this server, so nothing was received. Your server currently accepts uploads up to 1 MB. To allow larger music files, raise upload_max_filesize and post_max_size: Settings -> Sound has a button that writes a .user.ini for you, and shows the text to upload by hand if your host will not let PHP write it. | PASS |
+| 29. Starting a game never dead-ends | a game is created | GQ260913-60F9 | PASS |
+| 29. Starting a game never dead-ends | a second game is refused while one is open | Game GQ260913-60F9 is still open for Rajesh Patel. End it and start the new game? | PASS |
+| 29. Starting a game never dead-ends | the refusal names the game that is blocking | GQ260913-60F9 | PASS |
 | 29. Starting a game never dead-ends | and who was playing it | Rajesh Patel | PASS |
-| 29. Starting a game never dead-ends | the operator can take over in one step | GQ260913-CE50 | PASS |
+| 29. Starting a game never dead-ends | the operator can take over in one step | GQ260913-24B5 | PASS |
 | 29. Starting a game never dead-ends | the abandoned game is closed, not deleted | abandoned | PASS |
 | 29. Starting a game never dead-ends | the takeover is written to the audit log | as expected | PASS |
 | 29. Starting a game never dead-ends | every question is now used | as expected | PASS |
@@ -309,3 +309,16 @@
 | 29. Starting a game never dead-ends | the setup screen renders | 200 | PASS |
 | 29. Starting a game never dead-ends | it offers per-game question reuse | as expected | PASS |
 | 29. Starting a game never dead-ends | the create button is not dead when a game is open | button stays usable | PASS |
+| 30. Updates survive a locked-down host | the update completes despite a locked .htaccess | 3 file(s) written | PASS |
+| 30. Updates survive a locked-down host | the locked file is reported, not silently skipped | .htaccess | PASS |
+| 30. Updates survive a locked-down host | the host's own server config is left exactly as it was | untouched | PASS |
+| 30. Updates survive a locked-down host | the application files are updated all the same | index.php and new classes written | PASS |
+| 30. Updates survive a locked-down host | a genuinely unwritable application file still fails loudly | Could not write file: index.php. Check that the folder "application root" is writable by PHP. | PASS |
+| 30. Updates survive a locked-down host | and the message says which folder to check | as expected | PASS |
+| 30. Updates survive a locked-down host | the limits template asks for a usable size | as expected | PASS |
+| 30. Updates survive a locked-down host | the helper reports the live limit | 2 MB | PASS |
+| 30. Updates survive a locked-down host | and knows whether that is too small for a song | true | PASS |
+| 30. Updates survive a locked-down host | the admin panel can create .user.ini where the host allows it | .user.ini created, asking for 64M uploads. PHP caches this file, so allow up to five minutes, then reload this page to see the new limit. If it does not change, your host applies its own limit and you will need to raise it in the hosting control panel. | PASS |
+| 30. Updates survive a locked-down host | the file it writes is the documented one | as expected | PASS |
+| 30. Updates survive a locked-down host | .user.ini is never shipped in the repository itself | it is created on the server, never updated over | PASS |
+| 30. Updates survive a locked-down host | the template ships for manual installation | as expected | PASS |

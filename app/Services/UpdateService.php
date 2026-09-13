@@ -199,6 +199,12 @@ final class UpdateService
             $this->status('updating');
             $changed = $this->applyFiles($packageRoot);
             $this->note($changed . ' file(s) updated. Protected paths were left untouched.');
+            if ($this->writeWarnings !== []) {
+                $this->note(
+                    'Your host would not let PHP write ' . implode(', ', $this->writeWarnings)
+                    . '. The update finished; upload that file by FTP if you need the settings in it.'
+                );
+            }
             $this->db->update('system_updates', [
                 'files_changed' => $changed,
                 'updated_at'    => date('Y-m-d H:i:s'),
@@ -398,14 +404,35 @@ final class UpdateService
      * Copy the new files over the application, skipping every protected path.
      * Returns the number of files written.
      */
-    private function applyFiles(string $packageRoot): int
+    /**
+     * Files that configure the web server rather than the application.
+     * Plenty of hosts deliberately stop PHP writing these; that is a warning
+     * worth showing, never a reason to roll back a working update.
+     */
+    private const ADVISORY_FILES = ['.htaccess', '.user.ini', 'php.ini', 'web.config', '.htpasswd'];
+
+    /** @var array<int,string> Collected while files are applied. */
+    private array $writeWarnings = [];
+
+    /**
+     * Files the host would not let PHP write during the last apply.
+     *
+     * @return array<int,string>
+     */
+    public function writeWarnings(): array
     {
-        $appRoot = Application::instance()->rootPath();
+        return $this->writeWarnings;
+    }
+
+    private function applyFiles(string $packageRoot, ?string $targetRoot = null): int
+    {
+        $appRoot = $targetRoot ?? Application::instance()->rootPath();
         $protected = $this->protectedPaths();
         $excluded = Config::get('updates.excluded_from_package', []);
         $excluded = is_array($excluded) ? $excluded : [];
 
         $count = 0;
+        $this->writeWarnings = [];
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($packageRoot, \FilesystemIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::SELF_FIRST
@@ -435,7 +462,16 @@ final class UpdateService
                 throw new RuntimeException('Could not create directory: ' . dirname($relative));
             }
             if (!@copy($item->getPathname(), $target)) {
-                throw new RuntimeException('Could not write file: ' . $relative);
+                if (in_array(basename($relative), self::ADVISORY_FILES, true)) {
+                    // Shared hosting often locks these down. Say so and carry on.
+                    $this->writeWarnings[] = $relative;
+                    continue;
+                }
+                throw new RuntimeException(
+                    'Could not write file: ' . $relative
+                    . '. Check that the folder "' . (dirname($relative) === '.' ? 'application root' : dirname($relative))
+                    . '" is writable by PHP.'
+                );
             }
             $count++;
         }

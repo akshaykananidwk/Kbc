@@ -66,9 +66,11 @@ DirectoryIndex index.php
 </IfModule>
 
 # These apply only where PHP runs as an Apache module. Most shared hosting
-# runs PHP-FPM or CGI instead, where .htaccess cannot set PHP values at all -
-# that is what .user.ini next to this file is for. Both are shipped so music
-# uploads work whichever way your host runs PHP.
+# runs PHP-FPM or CGI instead, where .htaccess cannot set PHP values at all.
+# There, create a .user.ini in this folder - Admin -> Settings -> Sound has a
+# button that writes it for you, and docs/user.ini.example holds the text.
+# A .user.ini is deliberately NOT shipped in the package: many hosts refuse to
+# let PHP write one, which would make every update fail.
 <IfModule mod_php.c>
     php_flag display_errors Off
     php_flag expose_php Off

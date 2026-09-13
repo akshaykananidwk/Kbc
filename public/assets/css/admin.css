@@ -427,6 +427,15 @@ legend { font-weight: 700; font-size: .85rem; padding: 0 .45rem; color: var(--in
   border-radius: .6rem; padding: .7rem .9rem;
   font-size: .86rem; line-height: 1.5; color: var(--ink-700, inherit);
 }
+.hint details summary { cursor: pointer; font-weight: 700; }
+.code-block {
+  background: #17110d; color: #ffe9c9; border-radius: .5rem;
+  padding: .7rem .9rem; overflow-x: auto; font-size: .8rem; line-height: 1.5;
+  white-space: pre; margin: 0 0 .6rem;
+}
+.text-good { color: var(--ok); font-weight: 700; }
+.text-bad { color: var(--bad); font-weight: 700; }
+
 .hint code {
   background: rgba(0,0,0,.07); border-radius: .3rem; padding: .05rem .3rem;
   font-size: .85em;

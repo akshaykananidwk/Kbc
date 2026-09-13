@@ -183,12 +183,20 @@ explanation, so you can see it straight away.
 
 To raise it, in order of what usually works:
 
-1. The app already ships `.user.ini` (asks for 64M) — this is what PHP-FPM and
-   CGI hosting read. Make sure it was uploaded; it is a hidden file.
-2. `.htaccess` sets the same values for mod_php hosting.
-3. If your host ignores both, set `upload_max_filesize` and `post_max_size` in
-   the control panel: cPanel → *MultiPHP INI Editor*, or *Select PHP Version* →
-   *Options*. Plesk: *PHP Settings*.
+1. **Admin → Settings → Sound** has a button that writes a `.user.ini` for you.
+   This is the file PHP-FPM and CGI hosting read. PHP caches it for up to five
+   minutes, so wait, then reload the page to see the new limit.
+2. If the button says the host will not allow it, the same panel shows the exact
+   text — create `.user.ini` in the application root over FTP
+   (`docs/user.ini.example` in the package is the same file).
+3. `.htaccess` already sets the values for mod_php hosting.
+4. If your host ignores all of that, set `upload_max_filesize` and
+   `post_max_size` in the control panel: cPanel → *MultiPHP INI Editor*, or
+   *Select PHP Version* → *Options*. Plesk: *PHP Settings*.
+
+`.user.ini` is deliberately **not** shipped inside the package: many hosts stop
+PHP writing that file, and an updater that insists on writing it would fail
+every update.
 
 Nothing is broken while you sort that out: every sound in the show is generated
 in the browser and works with no files at all. Music is the only thing that

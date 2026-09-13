@@ -1,6 +1,15 @@
 ; ==========================================================================
 ; Ganpati Bapa Quiz Show - PHP limits
 ;
+; COPY THIS FILE to the application root as ".user.ini" (note the leading dot)
+; using FTP or your hosting file manager, then wait five minutes - PHP caches
+; this file. Admin -> Settings -> Sound shows the limit actually in force.
+;
+; It is NOT shipped at the root on purpose: many hosts refuse to let PHP write
+; a .user.ini, which would make every future update fail. Admin -> Settings ->
+; Sound has a button that tries to create it for you, and shows this text to
+; paste if the host says no.
+;
 ; Read by PHP-FPM and CGI/FastCGI hosting (the common case on shared
 ; hosting), where .htaccess cannot change PHP settings. Songs and background
 ; music are several megabytes, so the stock 2M upload limit has to go up or

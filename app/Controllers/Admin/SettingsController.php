@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Services\AuditService;
 use App\Services\SeederService;
+use App\Services\ServerConfigService;
 use App\Services\SettingsService;
 use App\Support\Uploader;
 
@@ -46,6 +47,8 @@ final class SettingsController extends Controller
                 'updates'  => 'GitHub Updates',
             ],
             'uploadFields' => $this->uploadFields(),
+            'serverUpload' => ServerConfigService::status(),
+            'userIniText'  => ServerConfigService::template(),
             'groupIcons'   => [
                 'general' => '⚙', 'theme' => '🎨', 'game' => '▶', 'display' => '▣',
                 'sound' => '🔔', 'music' => '♪', 'certificate' => '🏅',
@@ -189,6 +192,24 @@ final class SettingsController extends Controller
     }
 
     /** Clear a media setting and delete the file behind it. */
+    /**
+     * Tries to raise PHP's upload limits by writing .user.ini, and says
+     * plainly what to do when the host will not allow it.
+     */
+    public function phpLimits(Request $request): Response
+    {
+        $result = ServerConfigService::writeUserIni(\App\Services\AuthService::id());
+
+        if ($request->expectsJson() || $request->isAjax()) {
+            return $result['written']
+                ? $this->ok($result['message'], ServerConfigService::status())
+                : $this->fail($result['message'], 422);
+        }
+
+        $result['written'] ? $this->success($result['message']) : $this->error($result['message']);
+        return $this->redirect('/admin/settings');
+    }
+
     public function removeFile(Request $request): Response
     {
         $key = $request->string('key');

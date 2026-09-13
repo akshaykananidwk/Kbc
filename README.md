@@ -95,9 +95,10 @@ Full details, including sub-folder installs and troubleshooting, are in
 ## Running a show
 
 0. **Admin → Settings → Sound** — check the upload limit shown there. Songs are
-   several megabytes and stock hosting often allows only 2 MB; the `.user.ini`
-   shipped with the app asks for 64M, and the page tells you what your host actually
-   allows. Every sound works with no file at all if you would rather not upload any.
+   several megabytes and stock hosting often allows only 2 MB; if it is low, the page
+   offers a button that writes a `.user.ini` asking for 64 MB, and shows the text to
+   upload by hand when the host will not allow that. Every sound works with no file
+   at all if you would rather not upload any.
 1. **Admin → Prize ladder** — set the amounts, mark the guaranteed (safe) levels,
    attach gifts.
 2. **Admin → Questions** — add questions, or import a CSV. Pin questions to a level

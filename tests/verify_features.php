@@ -24,6 +24,8 @@ use App\Services\GameService;
 use App\Services\LeaderboardService;
 use App\Services\SettingsService;
 use App\Support\QrCode;
+use App\Services\ServerConfigService;
+use App\Services\UpdateService;
 use App\Support\Uploader;
 
 $cleanGames = static function () use ($db): void {
@@ -709,3 +711,85 @@ $suite->check('the create button is not dead when a game is open',
 $cleanGames();
 $db->run('DELETE FROM game_questions');
 $db->run('UPDATE questions SET times_used = 0, times_correct = 0, times_wrong = 0');
+
+// ---------------------------------------------------------------------------
+// 30. Updates survive a locked-down host
+// ---------------------------------------------------------------------------
+$suite->module('30. Updates survive a locked-down host');
+
+$updater = UpdateService::make($db);
+$reflection = new \ReflectionClass($updater);
+$applyFiles = $reflection->getMethod('applyFiles');
+$applyFiles->setAccessible(true);
+
+$sandbox = sys_get_temp_dir() . '/gq-update-' . bin2hex(random_bytes(5));
+$package = $sandbox . '/package';
+$target  = $sandbox . '/app';
+mkdir($package . '/app/Core', 0777, true);
+mkdir($target . '/app/Core', 0777, true);
+
+file_put_contents($package . '/.htaccess', "# new server rules\n");
+file_put_contents($package . '/.user.ini', "upload_max_filesize = 64M\n");
+file_put_contents($package . '/index.php', "<?php // new front controller\n");
+file_put_contents($package . '/app/Core/Thing.php', "<?php // new class\n");
+
+// The host refuses to let PHP touch its server-config files. A read-only file
+// would not prove anything here (the suite may run as root, which ignores
+// permissions), so the target is made genuinely unwritable instead.
+mkdir($target . '/.htaccess', 0777, true);
+file_put_contents($target . '/index.php', "<?php // old\n");
+
+$written = $applyFiles->invoke($updater, $package, $target);
+$suite->check('the update completes despite a locked .htaccess', $written >= 2, $written . ' file(s) written');
+$suite->check('the locked file is reported, not silently skipped',
+    in_array('.htaccess', $updater->writeWarnings(), true),
+    implode(', ', $updater->writeWarnings()));
+$suite->check('the host\'s own server config is left exactly as it was',
+    is_dir($target . '/.htaccess'), 'untouched');
+$suite->check('the application files are updated all the same',
+    str_contains((string) @file_get_contents($target . '/index.php'), 'new front controller')
+    && is_file($target . '/app/Core/Thing.php'),
+    'index.php and new classes written');
+
+// A file that is not server configuration must still stop the update.
+unlink($target . '/index.php');
+mkdir($target . '/index.php', 0777, true);
+file_put_contents($package . '/index.php', "<?php // newer\n");
+try {
+    $applyFiles->invoke($updater, $package, $target);
+    $suite->check('a genuinely unwritable application file still fails loudly', false, 'it was ignored');
+} catch (\RuntimeException $e) {
+    $suite->check('a genuinely unwritable application file still fails loudly',
+        str_contains($e->getMessage(), 'Could not write file: index.php'), $e->getMessage());
+    $suite->check('and the message says which folder to check',
+        str_contains($e->getMessage(), 'writable by PHP'), '');
+}
+exec('rm -rf ' . escapeshellarg($sandbox));
+
+// The PHP limits helper.
+$suite->check('the limits template asks for a usable size',
+    str_contains(ServerConfigService::template(), 'upload_max_filesize = 64M')
+    && str_contains(ServerConfigService::template(), 'post_max_size = 68M'));
+
+$status = ServerConfigService::status();
+$suite->check('the helper reports the live limit', $status['limit'] > 0, $status['limit_human']);
+$suite->equals('and knows whether that is too small for a song',
+    $status['is_low'], Uploader::serverLimit() < 8 * 1024 * 1024);
+
+$userIni = ServerConfigService::userIniPath();
+$existedBefore = is_file($userIni);
+if (!$existedBefore) {
+    $write = ServerConfigService::writeUserIni(null);
+    $suite->check('the admin panel can create .user.ini where the host allows it',
+        $write['written'] === true || str_contains($write['message'], 'not writable'),
+        (string) $write['message']);
+    if ($write['written']) {
+        $suite->check('the file it writes is the documented one',
+            (string) file_get_contents($userIni) === ServerConfigService::template());
+        unlink($userIni);
+    }
+}
+$suite->check('.user.ini is never shipped in the repository itself',
+    !$existedBefore, 'it is created on the server, never updated over');
+$suite->check('the template ships for manual installation',
+    is_file(\App\Core\Application::instance()->rootPath('docs/user.ini.example')));

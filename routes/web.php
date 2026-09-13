@@ -132,6 +132,7 @@ $router->group('/admin', ['installed', 'auth', 'noindex'], function (Router $rou
     $router->post('/settings', 'App\Controllers\Admin\SettingsController@update', ['admin', 'csrf']);
     $router->post('/settings/upload', 'App\Controllers\Admin\SettingsController@upload', ['admin', 'csrf']);
     $router->post('/settings/remove-file', 'App\Controllers\Admin\SettingsController@removeFile', ['admin', 'csrf']);
+    $router->post('/settings/php-limits', 'App\Controllers\Admin\SettingsController@phpLimits', ['admin', 'csrf']);
     $router->post('/settings/demo/remove', 'App\Controllers\Admin\SettingsController@removeDemo', ['admin', 'csrf']);
 
     // Users

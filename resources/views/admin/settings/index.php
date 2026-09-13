@@ -43,15 +43,40 @@ $selectOptions = [
       </div>
       <div class="card__body">
         <?php if (in_array($groupKey, ['sound', 'music'], true)): ?>
-          <p class="hint mb-1">
-            <strong>Uploads on this server are limited to <?= e(App\Support\Str::humanBytes(App\Support\Uploader::serverLimit())) ?>.</strong>
-            <?php if (App\Support\Uploader::serverLimit() < 8 * 1024 * 1024): ?>
-              A full song is usually 4–8 MB, so raise <code>upload_max_filesize</code> and
-              <code>post_max_size</code> in your hosting control panel (the <code>.user.ini</code>
-              file shipped with the app already asks for 64M).
-            <?php endif; ?>
+          <div class="hint mb-1">
+            <strong>Uploads on this server are limited to <?= e($serverUpload['limit_human']) ?>.</strong>
             Every sound also works with no file at all — the app generates its own tones.
-          </p>
+
+            <?php if ($serverUpload['is_low']): ?>
+              <p class="mb-1 mt-1">
+                A full song is usually 4–8 MB, so music cannot be uploaded until
+                <code>upload_max_filesize</code> and <code>post_max_size</code> are raised.
+              </p>
+
+              <?php if ($serverUpload['can_write']): ?>
+                <button type="button" class="btn btn--gold btn--sm" id="phpLimitsBtn">
+                  <?= $serverUpload['file_exists'] ? 'Rewrite .user.ini' : 'Create .user.ini for me' ?>
+                </button>
+                <span id="phpLimitsResult" class="small"></span>
+              <?php else: ?>
+                <p class="mb-1"><strong>This server will not let PHP create the file itself.</strong></p>
+              <?php endif; ?>
+
+              <details class="mt-1">
+                <summary>Do it by hand (works on every host)</summary>
+                <p class="mb-1 mt-1">
+                  Create a file called <code>.user.ini</code> in
+                  <code><?= e($serverUpload['path']) ?></code> containing:
+                </p>
+                <pre class="code-block"><?= e($userIniText) ?></pre>
+                <p class="mb-0">
+                  PHP caches this file for up to five minutes. If the limit still does not change,
+                  your host enforces its own — raise it in the control panel
+                  (cPanel → <em>MultiPHP INI Editor</em>, or <em>Select PHP Version → Options</em>).
+                </p>
+              </details>
+            <?php endif; ?>
+          </div>
         <?php endif; ?>
         <div class="form-grid">
           <?php foreach ($rows as $row): ?>
@@ -157,4 +182,37 @@ $selectOptions = [
 
 <?php $view->start('scripts'); ?>
 <script src="<?= e(asset('assets/js/audio.js')) ?>"></script>
+<script>
+(function () {
+  var button = document.getElementById('phpLimitsBtn');
+  if (!button) return;
+  var out = document.getElementById('phpLimitsResult');
+  var token = <?= json_encode($csrfToken) ?>;
+  var url = <?= json_encode(url('/admin/settings/php-limits')) ?>;
+
+  button.addEventListener('click', function () {
+    button.disabled = true;
+    out.textContent = ' Writing…';
+
+    var body = new FormData();
+    body.append('_token', token);
+
+    fetch(url, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: body
+    }).then(function (r) { return r.json(); })
+      .then(function (result) {
+        button.disabled = false;
+        out.textContent = ' ' + (result.message || '');
+        out.className = 'small ' + (result.success ? 'text-good' : 'text-bad');
+      })
+      .catch(function () {
+        button.disabled = false;
+        out.textContent = ' Could not reach the server.';
+        out.className = 'small text-bad';
+      });
+  });
+})();
+</script>
 <?php $view->stop(); ?>
