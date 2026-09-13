@@ -43,7 +43,9 @@ final class GameApiController extends Controller
             $participantId,
             AuthService::id(),
             $order === '' ? null : $order,
-            $request->has('rehearsal') ? $request->bool('rehearsal', false) : null
+            $request->has('rehearsal') ? $request->bool('rehearsal', false) : null,
+            $request->bool('replace_open_game', false),
+            $request->has('allow_repeat') ? $request->bool('allow_repeat', false) : null
         );
         return $this->ok('Game created.', $state);
     }

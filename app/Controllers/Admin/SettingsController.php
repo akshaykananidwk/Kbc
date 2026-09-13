@@ -241,15 +241,22 @@ final class SettingsController extends Controller
      */
     public function uploadFields(): array
     {
-        $image = ['label' => 'Image', 'types' => ['image'], 'max' => 4 * 1024 * 1024, 'kind' => 'image'];
-        $audio = ['label' => 'Sound', 'types' => ['audio'], 'max' => 8 * 1024 * 1024, 'kind' => 'audio'];
-        $music = ['label' => 'Music', 'types' => ['audio'], 'max' => 20 * 1024 * 1024, 'kind' => 'audio'];
+        // Never advertise a limit the server will not honour: PHP's own
+        // upload_max_filesize/post_max_size win, and on stock hosting they are
+        // only 2 MB. Showing the real number is what stops the "my song will
+        // not upload" mystery.
+        $serverLimit = Uploader::serverLimit();
+        $cap = static fn (int $bytes): int => min($bytes, $serverLimit);
+
+        $image = ['label' => 'Image', 'types' => ['image'], 'max' => $cap(4 * 1024 * 1024), 'kind' => 'image'];
+        $audio = ['label' => 'Sound', 'types' => ['audio'], 'max' => $cap(8 * 1024 * 1024), 'kind' => 'audio'];
+        $music = ['label' => 'Music', 'types' => ['audio'], 'max' => $cap(20 * 1024 * 1024), 'kind' => 'audio'];
 
         return [
             // Branding
             'site_logo'            => $image,
             'ganpati_image'        => $image,
-            'favicon'              => ['label' => 'Favicon', 'types' => ['icon'], 'max' => 512 * 1024, 'kind' => 'image'],
+            'favicon'              => ['label' => 'Favicon', 'types' => ['icon'], 'max' => $cap(512 * 1024), 'kind' => 'image'],
 
             // Short effects
             'sound_question_start' => $audio,

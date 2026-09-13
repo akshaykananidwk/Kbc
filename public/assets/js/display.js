@@ -50,6 +50,7 @@
     var hint = el('dAudioHint');
     if (hint) hint.hidden = true;
     applyMusicBed();
+    scheduleFit();
   };
 
   /** Chooses which music bed suits the current game state. */
@@ -117,6 +118,110 @@
   }
 
   /* --- Rendering ---------------------------------------------------------- */
+
+  /* --- Fit to the screen ---------------------------------------------------
+   * Every size on this screen is a multiple of --u. This routine chooses the
+   * multiplier so that whatever is on air right now fills the screen it is
+   * shown on, without ever spilling over the edge. It is what lets the same
+   * screen work on a 4K TV, a 16:9 projector and a short laptop panel.
+   * ------------------------------------------------------------------------ */
+  var FIT_MIN = 0.55;
+  var FIT_MAX = 1.45;
+  var fitScheduled = false;
+  var currentFit = 1;
+
+  function fitBoxes() {
+    var boxes = [];
+    var main = el('dMain');
+    var welcome = el('dWelcome');
+    if (main && !main.hidden) {
+      boxes.push(el('dCentre') || main);
+      // Measured separately: the question box clips its own overflow, so a
+      // long question would otherwise never register as too big.
+      var question = document.querySelector('.d-question');
+      if (question) boxes.push(question);
+      var options = el('dOptions');
+      if (options) boxes.push(options);
+    }
+    if (welcome && !welcome.hidden) boxes.push(welcome);
+    var overlays = document.querySelectorAll('.d-overlay');
+    for (var i = 0; i < overlays.length; i++) {
+      if (!overlays[i].hidden) boxes.push(overlays[i]);
+    }
+    return boxes;
+  }
+
+  /** True when nothing visible is taller or wider than the space it has. */
+  function contentFits() {
+    // The stage itself is not measured: its decorative corner ornaments sit
+    // deliberately outside the viewport and would always read as overflow.
+    // A few pixels of slack: sub-pixel line boxes make a box that fits
+    // perfectly well report one or two pixels of overflow.
+    var SLACK = 4;
+
+    var boxes = fitBoxes();
+    for (var i = 0; i < boxes.length; i++) {
+      var box = boxes[i];
+      if (box.scrollHeight > box.clientHeight + SLACK) return false;
+      if (box.scrollWidth > box.clientWidth + SLACK) return false;
+    }
+    return true;
+  }
+
+  function setFit(value) {
+    currentFit = value;
+    document.documentElement.style.setProperty('--d-fit', String(value));
+  }
+
+  /** Shrinks only the prize ladder until its rows fit their column. */
+  function fitLadder() {
+    var ladder = el('dLadder');
+    if (!ladder || ladder.hidden || !ladder.parentNode || ladder.offsetParent === null) return;
+
+    var value = 1;
+    document.documentElement.style.setProperty('--d-ladder-fit', '1');
+    for (var step = 0; step < 10; step++) {
+      if (ladder.scrollHeight <= ladder.clientHeight + 4 && ladder.scrollWidth <= ladder.clientWidth + 4) break;
+      value -= 0.07;
+      if (value < 0.45) { value = 0.45; document.documentElement.style.setProperty('--d-ladder-fit', '0.45'); break; }
+      document.documentElement.style.setProperty('--d-ladder-fit', value.toFixed(3));
+    }
+  }
+
+  function fitToScreen() {
+    fitScheduled = false;
+    document.documentElement.style.setProperty('--d-ladder-fit', '1');
+
+    // Grow first: on a big screen the show should use the whole panel.
+    setFit(FIT_MAX);
+    if (contentFits()) { fitLadder(); return; }
+
+    // Otherwise binary-search the largest multiplier that still fits.
+    var low = FIT_MIN, high = FIT_MAX, best = FIT_MIN;
+    for (var step = 0; step < 9; step++) {
+      var mid = (low + high) / 2;
+      setFit(mid);
+      if (contentFits()) { best = mid; low = mid; } else { high = mid; }
+    }
+    setFit(best);
+    fitLadder();
+  }
+
+  function scheduleFit() {
+    if (fitScheduled) return;
+    fitScheduled = true;
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(fitToScreen);
+    });
+  }
+
+  window.addEventListener('resize', scheduleFit);
+  window.addEventListener('orientationchange', scheduleFit);
+  document.addEventListener('fullscreenchange', scheduleFit);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleFit).catch(function () {});
+  }
+
   function render() {
     syncTimer();
     settings = state.settings || settings;
@@ -135,7 +240,7 @@
     var photo = el('dParticipantPhoto');
     if (photo) {
       photo.innerHTML = participant.photo
-        ? '<img src="' + esc(participant.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:1.4vmin">'
+        ? '<img src="' + esc(participant.photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:calc(1.4 * var(--u))">'
         : esc((participant.name || '?').charAt(0));
     }
     var participantBox = el('dParticipant');
@@ -887,6 +992,7 @@
   }).join('|');
 
   render();
+  scheduleFit();
   window.setInterval(paintTimer, 100);
   window.setInterval(paintVoteCountdown, 500);
   window.setInterval(paintFffClock, 150);

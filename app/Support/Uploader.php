@@ -45,6 +45,48 @@ final class Uploader
     ];
 
     /**
+     * The largest upload PHP itself will accept, whatever the application
+     * would allow. On stock hosting this is 2 MB - smaller than any song -
+     * which is why music uploads appear to "do nothing" until it is raised.
+     */
+    public static function serverLimit(): int
+    {
+        $upload = self::iniBytes((string) ini_get('upload_max_filesize'));
+        $post   = self::iniBytes((string) ini_get('post_max_size'));
+
+        $limits = array_filter([$upload, $post], static fn (int $v): bool => $v > 0);
+        return $limits === [] ? PHP_INT_MAX : (int) min($limits);
+    }
+
+    /** Turns "8M", "512K" or "1G" into bytes. */
+    public static function iniBytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 0;
+        }
+        $unit = strtolower(substr($value, -1));
+        $number = (float) $value;
+
+        return (int) match ($unit) {
+            'g'     => $number * 1024 * 1024 * 1024,
+            'm'     => $number * 1024 * 1024,
+            'k'     => $number * 1024,
+            default => $number,
+        };
+    }
+
+    /** How to raise the server limit, in words an admin can act on. */
+    public static function serverLimitAdvice(): string
+    {
+        return 'Your server currently accepts uploads up to '
+            . Str::humanBytes(self::serverLimit())
+            . '. To allow larger music files, raise upload_max_filesize and post_max_size '
+            . '(the .user.ini file shipped with the app sets them to 64M; some hosts need '
+            . 'the change made in the hosting control panel instead).';
+    }
+
+    /**
      * @param array<string,mixed> $file  A single entry from $_FILES
      * @param array<int,string>   $types One or more keys of self::ALLOWED
      * @return array{path:string,url:string,filename:string,mime:string,size:int,extension:string}
@@ -66,7 +108,11 @@ final class Uploader
             throw new ValidationException(['upload' => 'The uploaded file is empty.'], 'The uploaded file is empty.');
         }
         if ($size > $maxBytes) {
-            throw new ValidationException(['upload' => 'The file is larger than the ' . Str::humanBytes($maxBytes) . ' limit.'], 'The file is larger than the ' . Str::humanBytes($maxBytes) . ' limit.');
+            $message = 'The file is larger than the ' . Str::humanBytes($maxBytes) . ' limit.';
+            if ($maxBytes >= self::serverLimit()) {
+                $message .= ' ' . self::serverLimitAdvice();
+            }
+            throw new ValidationException(['upload' => $message], $message);
         }
 
         $originalName = (string) ($file['name'] ?? 'upload');
@@ -203,7 +249,7 @@ final class Uploader
     private static function errorMessage(int $code): string
     {
         return match ($code) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file is too large.',
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The file is too large for this server. ' . self::serverLimitAdvice(),
             UPLOAD_ERR_PARTIAL                        => 'The file was only partially uploaded.',
             UPLOAD_ERR_NO_FILE                        => 'No file was uploaded.',
             UPLOAD_ERR_NO_TMP_DIR                     => 'Server is missing a temporary folder.',

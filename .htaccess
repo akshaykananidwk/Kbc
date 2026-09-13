@@ -65,12 +65,23 @@ DirectoryIndex index.php
     Header unset Server
 </IfModule>
 
+# These apply only where PHP runs as an Apache module. Most shared hosting
+# runs PHP-FPM or CGI instead, where .htaccess cannot set PHP values at all -
+# that is what .user.ini next to this file is for. Both are shipped so music
+# uploads work whichever way your host runs PHP.
 <IfModule mod_php.c>
     php_flag display_errors Off
     php_flag expose_php Off
-    php_value upload_max_filesize 32M
-    php_value post_max_size 36M
+    php_value upload_max_filesize 64M
+    php_value post_max_size 68M
     php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 64M
+    php_value post_max_size 68M
+    php_value max_execution_time 300
+    php_value max_input_time 300
 </IfModule>
 
 # --------------------------------------------------------------------------

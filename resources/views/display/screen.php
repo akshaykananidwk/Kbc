@@ -93,7 +93,7 @@ $config = [
 
 <!-- Live game -->
 <main class="d-main <?= $showLadder ? '' : 'is-noladder' ?>" id="dMain" hidden>
-  <div class="d-centre">
+  <div class="d-centre" id="dCentre">
     <div class="d-participant" id="dParticipant">
       <div class="d-participant__photo" id="dParticipantPhoto"></div>
       <div>

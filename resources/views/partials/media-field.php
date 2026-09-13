@@ -17,7 +17,8 @@ $maxLabel = \App\Support\Str::humanBytes((int) ($spec['max'] ?? 4194304));
 $hasFile = trim($value) !== '';
 $fileUrl = $hasFile ? upload_url($value) : '';
 ?>
-<div class="media-field" data-media-field data-key="<?= e($key) ?>" data-kind="<?= e($kind) ?>">
+<div class="media-field" data-media-field data-key="<?= e($key) ?>" data-kind="<?= e($kind) ?>"
+     data-max="<?= (int) ($spec['max'] ?? 4194304) ?>" data-max-label="<?= e($maxLabel) ?>">
   <label class="label" for="media_<?= e($key) ?>">
     <?= e($label) ?>
     <span class="label__hint"><?= $kind === 'audio' ? 'MP3, WAV, OGG or M4A' : 'JPG, PNG, WEBP or SVG' ?> &middot; max <?= e($maxLabel) ?></span>

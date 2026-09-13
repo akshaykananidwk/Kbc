@@ -1,7 +1,7 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Date:** 13 September 2026
 
 ## Test environment
@@ -17,11 +17,16 @@ Reproduce with:
 
 ```bash
 php tests/verify.php https://your-domain.com admin@example.com YourPassword
+node tests/layout.js https://your-domain.com admin@example.com YourPassword
 ```
+
+The second suite drives a real Chromium browser, puts a question on air and
+measures the rendered audience screen at six screen shapes. Playwright is a
+development tool only — the application itself still has no Node dependency.
 
 ## Result
 
-**274 checks executed, 274 passed, 0 failed.**
+**309 checks executed, 309 passed, 0 failed**, plus **30 browser layout checks, all passed**.
 
 Per-check output is in [`verification-results.md`](verification-results.md).
 
@@ -135,12 +140,24 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Interface language | Gujarati / Hindi | Operator and admin screens render translated; unknown keys degrade to English | PASS |
 | Rehearsal mode | Isolation | No gift stock movement, no question statistics, hidden from history, reports and the hall of fame | PASS |
 | Routing | Constrained parameters | Route constraints containing `{n,m}` quantifiers compile and match correctly | PASS |
+| Display layout | Hidden panels | A panel the script hides leaves the layout entirely (display, operator and admin stylesheets) | PASS |
+| Display layout | Screen fit | Every size derives from one measured unit; the screen scales itself between 0.55× and 1.45× | PASS |
+| Display layout | 1080p TV, 4:3 projector, laptop, ultra-wide, 1280×600, 4K | Question, options, ladder and timer all render inside the screen, nothing clipped | PASS |
+| Display layout | Timer | Fully visible on every screen shape tested, with a live game on air | PASS |
+| Display layout | Prize ladder | Shrinks on its own so a long ladder never shrinks the question | PASS |
+| Uploads | Server limit | The app reads PHP's real `upload_max_filesize`/`post_max_size` and never advertises more | PASS |
+| Uploads | Real song | A multi-megabyte MP3 uploads, is stored, served and removable | PASS |
+| Uploads | Oversized file | Refused with HTTP 413 and an explanation naming the settings to change — not a misleading "session expired" | PASS |
+| Uploads | Admin guidance | Settings states the limit in force before anything is uploaded | PASS |
+| New game | Open game left behind | Refusal names the blocking game and its participant; one confirmation ends it and creates the new game | PASS |
+| New game | Audit | The automatic takeover is recorded as `game.replaced`; the old game is closed, never deleted | PASS |
+| New game | Exhausted question bank | Reported clearly, and a per-game "reuse questions" option gets the show on air without changing the global setting | PASS |
 
 ---
 
 ## What was verified how
 
-**Automated** (`tests/verify.php`, 274 assertions): everything in the table above
+**Automated** (`tests/verify.php`, 309 assertions; `tests/layout.js`, 30 browser assertions): everything in the table above
 except where noted below. The suite drives the real HTTP application with real
 cookies and CSRF tokens, and asserts against the live database.
 
@@ -162,9 +179,11 @@ throwaway branch carrying a deliberately broken migration.
   `state_version` advances on every action, and the operator and display
   payloads agree on level, question and state — rather than by driving two
   browser windows.
-- **Mobile devices.** Responsiveness was checked from the markup and CSS
-  (viewport tags, breakpoints, touch target sizes, `vmin` scaling), not on
-  physical phones or a real TV.
+- **Mobile devices.** Phone and tablet responsiveness was checked from the
+  markup and CSS (viewport tags, breakpoints, touch target sizes), not on
+  physical handsets. The audience screen itself *was* measured in a real
+  browser at six screen shapes, including a 4K TV and a 4:3 projector, but on
+  a virtual display rather than the physical television.
 - **Sound playback.** The cue tones are generated in the browser with the Web
   Audio API, so the application makes sound with no files at all. The generator
   and the event wiring were verified in source, and uploaded music was verified
@@ -184,17 +203,26 @@ throwaway branch carrying a deliberately broken migration.
    `repeat_questions` off, a question used in any past game is never served
    again, so a 10-level ladder needs 10 fresh questions per show. The dashboard
    and the operator setup screen show how many *unused* questions remain.
-   Turn the setting on in **Settings → Game** if you would rather reuse them.
+   When they run low the setup screen now offers **Reuse questions if needed**
+   for that one game, so a show is never blocked; turn the setting on in
+   **Settings → Game** to make reuse the default.
 2. **MySQL cannot roll back DDL.** If a future migration fails halfway, the
    runner calls that migration's own `down()` to clean up. Migrations should
    therefore always implement `down()` properly.
-3. **Live audience voting needs everyone on the same network.** The QR code
+3. **Music needs the server to allow it.** PHP's stock limit is 2 MB, which is
+   smaller than most songs. The `.user.ini` shipped with the app asks for 64M
+   and works on PHP-FPM and CGI hosting; `.htaccess` covers mod_php. If your
+   host ignores both, raise `upload_max_filesize` and `post_max_size` in the
+   hosting control panel. **Admin → Settings → Sound** always shows the limit
+   actually in force, and an oversized upload now says so instead of failing
+   silently.
+4. **Live audience voting needs everyone on the same network.** The QR code
    contains the address the browser is using, so the phones must be able to
    reach that address. On a venue Wi-Fi set `app_url` in **Settings → General**
    to the machine's LAN address before printing or showing the code.
-4. **Rehearsal games are kept, not discarded.** They are simply excluded from
+5. **Rehearsal games are kept, not discarded.** They are simply excluded from
    history, statistics, the hall of fame and certificates. Filter for them in
    **Admin → Reports → Games** if you want to review a practice run.
-5. **The updater needs `curl` and `zip`.** Without them the rest of the
+6. **The updater needs `curl` and `zip`.** Without them the rest of the
    application works normally; only the update manager is unavailable, and the
    Updates page says so.

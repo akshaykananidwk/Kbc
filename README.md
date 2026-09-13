@@ -42,6 +42,10 @@ The two screens stay synchronised through a lightweight long-poll against
   not at all.
 - **One-click GitHub updates** with automatic backup, protected paths, database
   migration, cache clear and automatic rollback on failure.
+- **Fits any screen, by itself.** Every size on the audience screen is a multiple of one
+  unit that the screen measures and sets for itself, so a 4K TV, a 4:3 projector and a
+  short laptop panel all show the whole question, all four options, the full prize
+  ladder and the complete timer — nothing cut off, nothing to configure.
 - **Sound that just works.** Every cue (question, timer, lock, right, wrong, win) is
   synthesised in the browser with the Web Audio API, so the app makes sound out of the
   box with no audio files and no licensing worries. Upload your own intro song,
@@ -90,6 +94,10 @@ Full details, including sub-folder installs and troubleshooting, are in
 
 ## Running a show
 
+0. **Admin → Settings → Sound** — check the upload limit shown there. Songs are
+   several megabytes and stock hosting often allows only 2 MB; the `.user.ini`
+   shipped with the app asks for 64M, and the page tells you what your host actually
+   allows. Every sound works with no file at all if you would rather not upload any.
 1. **Admin → Prize ladder** — set the amounts, mark the guaranteed (safe) levels,
    attach gifts.
 2. **Admin → Questions** — add questions, or import a CSV. Pin questions to a level
@@ -106,6 +114,11 @@ Start game → Start timer → (participant answers) → click A/B/C/D
 
 Keyboard shortcuts: `A B C D` select, `Space` start timer, `P` pause,
 `L` lock, `R` reveal, `N` next.
+
+If a game from an earlier show was never ended, the setup screen says so and offers
+to end it and start the new one — you are never left with a dead button. The same
+screen can allow question reuse for a single game when the unused questions run low,
+without changing the setting for future shows.
 
 **Before the real show**, tick *Rehearsal* when creating the game. Everything behaves
 exactly as it will on the night, but nothing is recorded: gift stock, question
@@ -156,6 +169,13 @@ php console.php backup:database   # create a database backup
 php console.php cache:clear       # clear application cache
 php console.php update:check      # ask GitHub about a newer version
 php console.php db:check          # verify the database connection
+```
+
+Two test suites ship with the app:
+
+```bash
+php tests/verify.php https://your-domain.com admin@example.com YourPassword
+node tests/layout.js https://your-domain.com   # needs Playwright; checks the TV screen fits
 ```
 
 ---

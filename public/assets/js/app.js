@@ -225,6 +225,20 @@
         if (!input.files || !input.files[0]) return;
         var file = input.files[0];
 
+        // Checked here as well as on the server: a browser that starts a
+        // 12 MB upload against a 2 MB server limit just loses the whole
+        // request, token and all, and the admin sees nothing useful.
+        var max = parseInt(field.getAttribute('data-max') || '0', 10);
+        if (max > 0 && file.size > max) {
+          input.value = '';
+          setStatus(field,
+            'This file is ' + (file.size / 1048576).toFixed(1) + ' MB. This server accepts up to ' +
+            (field.getAttribute('data-max-label') || (max / 1048576).toFixed(0) + ' MB') +
+            '. Use a smaller file, or raise upload_max_filesize and post_max_size on your hosting.',
+            'error');
+          return;
+        }
+
         field.classList.add('is-uploading');
         setStatus(field, 'Uploading ' + file.name + '…', 'busy');
 

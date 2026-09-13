@@ -1,3 +1,7 @@
+/* A panel the script hides must leave the layout, whatever display value
+   its own class sets. */
+[hidden] { display: none !important; }
+
 /* ==========================================================================
    Operator control screen (monitor 1)
    Big, obvious controls. Nothing decorative that could slow the operator down.

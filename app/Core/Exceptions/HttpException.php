@@ -7,14 +7,27 @@ use RuntimeException;
 
 class HttpException extends RuntimeException
 {
-    public function __construct(private int $statusCode, string $message = '')
-    {
+    /**
+     * @param array<string,mixed> $context Extra detail the client can act on,
+     *                                     such as which game is blocking a new one.
+     */
+    public function __construct(
+        private int $statusCode,
+        string $message = '',
+        private array $context = []
+    ) {
         parent::__construct($message === '' ? self::defaultMessage($statusCode) : $message, $statusCode);
     }
 
     public function statusCode(): int
     {
         return $this->statusCode;
+    }
+
+    /** @return array<string,mixed> */
+    public function context(): array
+    {
+        return $this->context;
     }
 
     public static function defaultMessage(int $status): string

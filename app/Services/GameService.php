@@ -64,7 +64,9 @@ final class GameService
         int $participantId,
         ?int $operatorId,
         ?string $questionOrder = null,
-        ?bool $isRehearsal = null
+        ?bool $isRehearsal = null,
+        bool $replaceOpenGame = false,
+        ?bool $allowRepeat = null
     ): array {
         $participant = $this->db->selectOne('SELECT * FROM participants WHERE id = ? LIMIT 1', [$participantId]);
         if ($participant === null) {
@@ -77,9 +79,33 @@ final class GameService
             throw new HttpException(422, 'Add at least one active question before starting a game.');
         }
 
+        // A show that was closed without ending the game properly used to
+        // block every later game until somebody deleted it by hand. The
+        // operator can now take over in one click instead.
         $running = $this->games->activeGame();
         if ($running !== null) {
-            throw new HttpException(409, 'Game ' . $running['game_code'] . ' is still open. Finish or abandon it first.');
+            if (!$replaceOpenGame) {
+                throw new HttpException(
+                    409,
+                    'Game ' . $running['game_code'] . ' is still open for '
+                    . ($running['participant_name'] ?? 'a participant')
+                    . '. End it and start the new game?',
+                    ['open_game' => [
+                        'id'          => (int) $running['id'],
+                        'game_code'   => (string) $running['game_code'],
+                        'participant' => (string) ($running['participant_name'] ?? ''),
+                        'status'      => (string) $running['status'],
+                    ]]
+                );
+            }
+
+            $this->endGame((int) $running['id'], 'abandoned');
+            AuditService::log(
+                'game.replaced',
+                'Game ' . $running['game_code'] . ' was ended automatically to start a new game.',
+                'game',
+                (int) $running['id']
+            );
         }
 
         $order = $questionOrder ?? SettingsService::string('question_order', 'fixed');
@@ -98,6 +124,7 @@ final class GameService
             'state_version'   => 1,
             'current_level'   => 0,
             'question_order'  => $order,
+            'allow_repeat'    => $allowRepeat === null ? null : ($allowRepeat ? 1 : 0),
             'is_rehearsal'    => $rehearsal ? 1 : 0,
         ]);
 
@@ -159,8 +186,12 @@ final class GameService
         } else {
             // A rehearsal may reuse questions freely - it is practice, and it
             // must not burn through the question bank before the real show.
-            $allowReuse = (int) ($game['is_rehearsal'] ?? 0) === 1
-                || SettingsService::bool('repeat_questions', false);
+            // Order of precedence: the choice made for this game, then
+            // rehearsal (practice must never burn the question bank), then
+            // the global setting.
+            $allowReuse = $game['allow_repeat'] !== null
+                ? (int) $game['allow_repeat'] === 1
+                : ((int) ($game['is_rehearsal'] ?? 0) === 1 || SettingsService::bool('repeat_questions', false));
 
             $question = $this->questions->pickForLevel(
                 $levelNo,
@@ -172,7 +203,11 @@ final class GameService
             );
 
             if ($question === null) {
-                throw new HttpException(422, 'No unused question is available for level ' . $levelNo . '. Add more questions.');
+                throw new HttpException(
+                    422,
+                    'No unused question is available for level ' . $levelNo
+                    . '. Add more questions, or allow questions to be reused for this game.'
+                );
             }
 
             $questionId = (int) $question['id'];

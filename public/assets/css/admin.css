@@ -41,6 +41,10 @@
 
 * { box-sizing: border-box; }
 
+/* A panel the script hides must leave the layout, whatever display value
+   its own class sets. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -415,6 +419,18 @@ legend { font-weight: 700; font-size: .85rem; padding: 0 .45rem; color: var(--in
    Misc
    ========================================================================== */
 .muted { color: var(--ink-500); }
+
+/* Short explanatory note above a group of settings. */
+.hint {
+  background: var(--gold-50, rgba(245,166,35,.1));
+  border: 1px solid rgba(245,166,35,.45);
+  border-radius: .6rem; padding: .7rem .9rem;
+  font-size: .86rem; line-height: 1.5; color: var(--ink-700, inherit);
+}
+.hint code {
+  background: rgba(0,0,0,.07); border-radius: .3rem; padding: .05rem .3rem;
+  font-size: .85em;
+}
 .small { font-size: .82rem; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .84rem; }
 .nowrap { white-space: nowrap; }

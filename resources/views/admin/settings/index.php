@@ -42,6 +42,17 @@ $selectOptions = [
         <span class="badge"><?= count($rows) ?> setting(s)</span>
       </div>
       <div class="card__body">
+        <?php if (in_array($groupKey, ['sound', 'music'], true)): ?>
+          <p class="hint mb-1">
+            <strong>Uploads on this server are limited to <?= e(App\Support\Str::humanBytes(App\Support\Uploader::serverLimit())) ?>.</strong>
+            <?php if (App\Support\Uploader::serverLimit() < 8 * 1024 * 1024): ?>
+              A full song is usually 4–8 MB, so raise <code>upload_max_filesize</code> and
+              <code>post_max_size</code> in your hosting control panel (the <code>.user.ini</code>
+              file shipped with the app already asks for 64M).
+            <?php endif; ?>
+            Every sound also works with no file at all — the app generates its own tones.
+          </p>
+        <?php endif; ?>
         <div class="form-grid">
           <?php foreach ($rows as $row): ?>
             <?php

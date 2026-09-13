@@ -48,9 +48,18 @@ final class Response
     }
 
     /** @param array<string,mixed> $errors */
-    public static function apiError(string $message, int $status = 400, array $errors = []): Response
+    /**
+     * @param array<string,mixed> $errors
+     * @param array<string,mixed> $context Detail the client can act on, e.g. which
+     *                                     game is blocking a new one.
+     */
+    public static function apiError(string $message, int $status = 400, array $errors = [], array $context = []): Response
     {
-        $payload = ['success' => false, 'message' => $message, 'data' => new \stdClass()];
+        $payload = [
+            'success' => false,
+            'message' => $message,
+            'data'    => $context === [] ? new \stdClass() : $context,
+        ];
         if ($errors !== []) {
             $payload['errors'] = $errors;
         }

@@ -474,7 +474,9 @@ $css = (string) file_get_contents(\App\Core\Application::publicPath('assets/css/
 $suite->check('admin CSS has mobile breakpoints', substr_count($css, '@media') >= 3, substr_count($css, '@media') . ' media queries');
 $suite->check('admin CSS sets 16px inputs on mobile (prevents iOS zoom)', str_contains($css, 'font-size: 16px'));
 $displayCss = (string) file_get_contents(\App\Core\Application::publicPath('assets/css/display.css'));
-$suite->check('display CSS scales with the viewport (vmin units)', substr_count($displayCss, 'vmin') > 40, substr_count($displayCss, 'vmin') . ' vmin values');
+$suite->check('display CSS scales with the viewport',
+    str_contains($displayCss, '--u: calc(1vmin') && substr_count($displayCss, 'var(--u)') > 200,
+    substr_count($displayCss, 'var(--u)') . ' sizes follow the screen unit');
 $suite->check('display CSS respects reduced motion', str_contains($displayCss, 'prefers-reduced-motion'));
 
 // ---------------------------------------------------------------------------

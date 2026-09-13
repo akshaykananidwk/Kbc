@@ -175,10 +175,34 @@ usually carry an account prefix, e.g. `myaccount_ganpati`.
 That is deliberate. To genuinely reinstall, take a backup first, then delete
 `storage/installed.lock` on the server.
 
-**Uploads fail**
-`public/uploads/` is not writable, or the file is larger than PHP's
-`upload_max_filesize`. The `.htaccess` requests 32 MB; some hosts need this
-changed in cPanel → *MultiPHP INI Editor*.
+**Music or a sound file will not upload**
+Almost always PHP's own limit, which is 2 MB on stock hosting — smaller than
+any song. **Admin → Settings → Sound** shows the limit actually in force on
+your server; an oversized upload is refused with that number and an
+explanation, so you can see it straight away.
+
+To raise it, in order of what usually works:
+
+1. The app already ships `.user.ini` (asks for 64M) — this is what PHP-FPM and
+   CGI hosting read. Make sure it was uploaded; it is a hidden file.
+2. `.htaccess` sets the same values for mod_php hosting.
+3. If your host ignores both, set `upload_max_filesize` and `post_max_size` in
+   the control panel: cPanel → *MultiPHP INI Editor*, or *Select PHP Version* →
+   *Options*. Plesk: *PHP Settings*.
+
+Nothing is broken while you sort that out: every sound in the show is generated
+in the browser and works with no files at all. Music is the only thing that
+needs an upload.
+
+**Other uploads fail (photos, logos)**
+`public/uploads/` is not writable, or the file is over the same PHP limit.
+
+**"Create the game" does nothing, or is greyed out**
+Either a game from an earlier show was never ended, or the unused questions ran
+out. The setup screen now handles both: it names the open game and offers to end
+it and start the new one, and it offers **Reuse questions if needed** for a
+single game when the question bank is low. You never have to delete games or
+participants to get going.
 
 **Gujarati text shows as `?????`**
 The database was not created as `utf8mb4`. Create a fresh `utf8mb4` /

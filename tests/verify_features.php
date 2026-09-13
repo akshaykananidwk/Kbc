@@ -24,6 +24,7 @@ use App\Services\GameService;
 use App\Services\LeaderboardService;
 use App\Services\SettingsService;
 use App\Support\QrCode;
+use App\Support\Uploader;
 
 $cleanGames = static function () use ($db): void {
     $db->run('DELETE FROM game_events');
@@ -501,3 +502,210 @@ try {
 $cleanGames();
 $db->run('UPDATE questions SET times_used = 0, times_correct = 0, times_wrong = 0');
 SettingsService::set('repeat_questions', false);
+
+// ---------------------------------------------------------------------------
+// 28. The screen fits, and music really uploads
+// ---------------------------------------------------------------------------
+$suite->module('28. Screen fit and real music uploads');
+
+$displayCss  = (string) file_get_contents(\App\Core\Application::publicPath('assets/css/display.css'));
+$operatorCss = (string) file_get_contents(\App\Core\Application::publicPath('assets/css/operator.css'));
+$adminCss    = (string) file_get_contents(\App\Core\Application::publicPath('assets/css/admin.css'));
+$displayJs   = (string) file_get_contents(\App\Core\Application::publicPath('assets/js/display.js'));
+
+// The bug that put the welcome screen on top of a live question: a hidden
+// panel kept its space because its own class set display:flex.
+foreach (['display' => $displayCss, 'operator' => $operatorCss, 'admin' => $adminCss] as $name => $css) {
+    $suite->check('a hidden panel leaves the layout (' . $name . ')',
+        (bool) preg_match('/\[hidden\]\s*\{\s*display:\s*none\s*!important/', $css));
+}
+
+$suite->check('every size on the display scales from one unit',
+    str_contains($displayCss, '--u: calc(1vmin') && substr_count($displayCss, 'var(--u)') > 200,
+    substr_count($displayCss, 'var(--u)') . ' scaled values');
+$suite->check('the prize ladder scales on its own',
+    str_contains($displayCss, '--ul: calc(var(--u)') && str_contains($displayJs, 'fitLadder'),
+    'so a long ladder never shrinks the question');
+$suite->check('the display measures itself and fits the screen',
+    str_contains($displayJs, 'function fitToScreen') && str_contains($displayJs, "addEventListener('resize', scheduleFit)"));
+$suite->check('the timer keeps its own space',
+    str_contains($displayCss, '.d-timer { flex: 0 0 auto; }'), 'never squeezed off the screen');
+$suite->check('the stage is a fixed grid that cannot overflow',
+    str_contains($displayCss, 'grid-template-rows: auto auto minmax(0, 1fr) auto'));
+
+// Upload limits: the real reason a song would not upload.
+$suite->equals('server limit reads upload_max_filesize', Uploader::iniBytes('2M'), 2097152);
+$suite->equals('server limit reads kilobytes', Uploader::iniBytes('512K'), 524288);
+$suite->equals('server limit reads gigabytes', Uploader::iniBytes('1G'), 1073741824);
+$suite->equals('a plain byte count is understood', Uploader::iniBytes('4096'), 4096);
+
+$serverLimit = Uploader::serverLimit();
+$suite->check('the app knows what this server accepts', $serverLimit > 0,
+    \App\Support\Str::humanBytes($serverLimit));
+
+$controller = new \App\Controllers\Admin\SettingsController();
+$tooBig = [];
+foreach ($controller->uploadFields() as $fieldKey => $spec) {
+    if ((int) $spec['max'] > $serverLimit) { $tooBig[] = $fieldKey; }
+}
+$suite->check('no upload field promises more than the server allows', $tooBig === [],
+    $tooBig === [] ? 'all capped at ' . \App\Support\Str::humanBytes($serverLimit) : implode(', ', $tooBig));
+
+$http->get('/admin/settings');
+$suite->check('the settings page states the real limit',
+    str_contains($http->body, 'Uploads on this server are limited to'));
+$suite->check('the upload control knows the limit before sending',
+    str_contains($http->body, 'data-max=') && str_contains($http->body, 'data-max-label='));
+
+// A real music file, the size of an actual song, over real HTTP.
+$songBytes = min(3 * 1024 * 1024, max(0, $serverLimit - 262144));
+if ($songBytes > 512 * 1024) {
+    $song = "ID3\x03\x00\x00\x00\x00\x00\x00" . str_repeat("\xff\xfb\x90\x00" . str_repeat("\x00", 1020), (int) ($songBytes / 1024));
+    $boundary = '----song' . bin2hex(random_bytes(6));
+    $http->get('/admin/settings');
+    $response = $http->request('POST', '/admin/settings/upload',
+        $multipart(['_token' => $http->token(), 'key' => 'music_intro'],
+            ['file' => ['song.mp3', 'audio/mpeg', $song]], $boundary),
+        ['Content-Type' => 'multipart/form-data; boundary=' . $boundary,
+         'Accept' => 'application/json', 'X-Requested-With' => 'XMLHttpRequest']
+    );
+    $result = json_decode($response, true) ?? [];
+    $suite->check('a real ' . round(strlen($song) / 1048576, 1) . ' MB song uploads',
+        ($result['success'] ?? false) === true, (string) ($result['message'] ?? ''));
+
+    SettingsService::flush();
+    $storedSong = SettingsService::string('music_intro');
+    $suite->check('the song is stored and served',
+        $storedSong !== '' && is_file(\App\Core\Application::publicPath($storedSong)),
+        $storedSong);
+
+    $http->get('/admin/settings');
+    $http->request('POST', '/admin/settings/remove-file',
+        $multipart(['_token' => $http->token(), 'key' => 'music_intro'], [], $boundary),
+        ['Content-Type' => 'multipart/form-data; boundary=' . $boundary,
+         'Accept' => 'application/json', 'X-Requested-With' => 'XMLHttpRequest']);
+    SettingsService::flush();
+}
+
+// The silent failure: a file bigger than post_max_size arrives with an empty
+// body, CSRF token and all. Proved against a second server started here with
+// stock hosting limits.
+$stockPort = 8099;
+$descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+$command = escapeshellarg(PHP_BINARY) . ' -d upload_max_filesize=1M -d post_max_size=1M'
+    . ' -S 127.0.0.1:' . $stockPort . ' -t ' . escapeshellarg(\App\Core\Application::instance()->rootPath())
+    . ' ' . escapeshellarg(\App\Core\Application::instance()->rootPath('server-router.php'));
+$stock = @proc_open($command, $descriptors, $pipes);
+
+if (is_resource($stock)) {
+    $stockUrl = 'http://127.0.0.1:' . $stockPort;
+    for ($attempt = 0; $attempt < 40; $attempt++) {
+        usleep(150000);
+        $probe = @file_get_contents($stockUrl . '/display', false, stream_context_create(['http' => ['timeout' => 2, 'ignore_errors' => true]]));
+        if ($probe !== false) { break; }
+    }
+
+    $stockHttp = new Http($stockUrl);
+    $stockHttp->get('/admin/login');
+    $stockHttp->post('/admin/login', ['_token' => $stockHttp->token(), 'identifier' => $email, 'password' => $password]);
+    $stockHttp->get('/admin/settings');
+    $suite->check('a stock 1 MB server advertises its real limit',
+        str_contains($stockHttp->body, 'Uploads on this server are limited to 1 MB'),
+        'admin is told before trying');
+
+    $oversize = str_repeat('x', 2 * 1024 * 1024);
+    $boundary = '----big' . bin2hex(random_bytes(6));
+    $body = $stockHttp->request('POST', '/admin/settings/upload',
+        $multipart(['_token' => $stockHttp->token(), 'key' => 'music_intro'],
+            ['file' => ['big.mp3', 'audio/mpeg', $oversize]], $boundary),
+        ['Content-Type' => 'multipart/form-data; boundary=' . $boundary,
+         'Accept' => 'application/json', 'X-Requested-With' => 'XMLHttpRequest']
+    );
+    $result = json_decode($body, true) ?? [];
+    $suite->equals('an oversized upload is refused, not silently lost', $stockHttp->status, 413);
+    $suite->check('and the message says exactly what to change',
+        str_contains((string) ($result['message'] ?? ''), 'too big for this server')
+        && str_contains((string) ($result['message'] ?? ''), 'upload_max_filesize'),
+        (string) ($result['message'] ?? ''));
+
+    foreach ($pipes as $pipe) { @fclose($pipe); }
+    proc_terminate($stock);
+    proc_close($stock);
+} else {
+    $suite->check('oversized-upload path could be tested', false, 'could not start the test server');
+}
+
+// ---------------------------------------------------------------------------
+// 29. Starting a game never dead-ends
+// ---------------------------------------------------------------------------
+$suite->module('29. Starting a game never dead-ends');
+$cleanGames();
+SettingsService::set('repeat_questions', false);
+
+$engine = GameService::make();
+$others = array_map(static fn ($r) => (int) $r['id'], $db->select('SELECT id FROM participants ORDER BY id LIMIT 2'));
+$secondParticipant = $others[1] ?? $others[0];
+
+$first = $engine->createGame($others[0], null, null, false);
+$suite->check('a game is created', ($first['game_code'] ?? '') !== '', (string) ($first['game_code'] ?? ''));
+
+try {
+    $engine->createGame($secondParticipant, null, null, false);
+    $suite->check('a second game is refused while one is open', false, 'it was created anyway');
+} catch (\App\Core\Exceptions\HttpException $e) {
+    $suite->check('a second game is refused while one is open', $e->statusCode() === 409, $e->getMessage());
+    $context = $e->context();
+    $suite->check('the refusal names the game that is blocking',
+        ($context['open_game']['game_code'] ?? '') === (string) $first['game_code'],
+        (string) ($context['open_game']['game_code'] ?? 'no detail'));
+    $suite->check('and who was playing it',
+        ($context['open_game']['participant'] ?? '') !== '',
+        (string) ($context['open_game']['participant'] ?? ''));
+}
+
+$second = $engine->createGame($secondParticipant, null, null, false, true);
+$suite->check('the operator can take over in one step', ($second['game_code'] ?? '') !== '', (string) ($second['game_code'] ?? ''));
+$suite->equals('the abandoned game is closed, not deleted',
+    (string) $db->scalar('SELECT status FROM games WHERE id = ?', [(int) $first['game_id']]), 'abandoned');
+$suite->check('the takeover is written to the audit log',
+    (int) $db->scalar("SELECT COUNT(*) FROM audit_logs WHERE action = 'game.replaced'") > 0);
+
+// An exhausted question bank must not leave the operator stuck either.
+$db->run('DELETE FROM game_questions');
+$level = 1;
+foreach ($db->select("SELECT id FROM questions WHERE status = 'active'") as $row) {
+    $db->run('INSERT INTO game_questions (game_id, question_id, level_no, served_at, created_at) VALUES (?,?,?,NOW(),NOW())',
+        [(int) $second['game_id'], (int) $row['id'], $level++]);
+}
+$engine->endGame((int) $second['game_id'], 'abandoned');
+
+$questionsRepo = new \App\Repositories\QuestionRepository();
+$suite->equals('every question is now used', $questionsRepo->availableCount(false), 0);
+
+try {
+    $blocked = $engine->createGame($others[0], null, null, false, true);
+    $engine->startGame((int) $blocked['game_id']);
+    $suite->check('without reuse an exhausted bank is reported clearly', false, 'it started anyway');
+} catch (\App\Core\Exceptions\HttpException $e) {
+    $suite->check('without reuse an exhausted bank is reported clearly',
+        str_contains($e->getMessage(), 'allow questions to be reused'), $e->getMessage());
+}
+
+$cleanGames();
+$db->run('DELETE FROM game_questions');
+$reuse = $engine->createGame($others[0], null, null, false, true, true);
+$state = $engine->startGame((int) $reuse['game_id']);
+$suite->check('allowing reuse for one game gets the show on air',
+    ($state['question']['text'] ?? '') !== '', mb_substr((string) ($state['question']['text'] ?? ''), 0, 38));
+$suite->equals('the global setting is untouched', SettingsService::bool('repeat_questions', true), false);
+$engine->endGame((int) $reuse['game_id'], 'abandoned');
+
+$http->get('/operator/setup');
+$suite->equals('the setup screen renders', $http->status, 200);
+$suite->check('it offers per-game question reuse', str_contains($http->body, 'id="repeatToggle"'));
+$suite->check('the create button is not dead when a game is open',
+    !preg_match('/id="createGameBtn"[^>]*disabled/', $http->body), 'button stays usable');
+
+$cleanGames();
+$db->run('DELETE FROM game_questions');
+$db->run('UPDATE questions SET times_used = 0, times_correct = 0, times_wrong = 0');

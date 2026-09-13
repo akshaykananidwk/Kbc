@@ -296,9 +296,11 @@ final class Application
     {
         $status = 500;
         $errors = [];
+        $context = [];
 
         if ($e instanceof HttpException) {
             $status = $e->statusCode();
+            $context = $e->context();
         } elseif ($e instanceof ValidationException) {
             $status = 422;
             $errors = $e->errors();
@@ -313,7 +315,7 @@ final class Application
             : $e->getMessage();
 
         if ($request->expectsJson()) {
-            return Response::apiError($message, $status, $errors);
+            return Response::apiError($message, $status, $errors, $context);
         }
 
         // Validation failures on normal forms bounce back with the messages.
