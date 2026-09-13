@@ -1,7 +1,7 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.2.1
+**Version:** 1.3.0
 **Date:** 13 September 2026
 
 ## Test environment
@@ -26,7 +26,7 @@ development tool only — the application itself still has no Node dependency.
 
 ## Result
 
-**322 checks executed, 322 passed, 0 failed**, plus **30 browser layout checks, all passed**.
+**334 checks executed, 334 passed, 0 failed**, plus **32 browser layout checks, all passed**.
 
 Per-check output is in [`verification-results.md`](verification-results.md).
 
@@ -151,6 +151,11 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Uploads | Admin guidance | Settings states the limit in force before anything is uploaded | PASS |
 | New game | Open game left behind | Refusal names the blocking game and its participant; one confirmation ends it and creates the new game | PASS |
 | New game | Audit | The automatic takeover is recorded as `game.replaced`; the old game is closed, never deleted | PASS |
+| Assets | Cache busting | Every stylesheet and script URL carries the file's timestamp, so an update reaches a browser that was told to cache it for a week | PASS |
+| Assets | Change detection | Touching a file changes the URL browsers request | PASS |
+| Version | Truthfulness | The version reported and shown on the display is the VERSION file on disk, so a stale setting from an earlier update cannot mislead | PASS |
+| Display | Self-refresh | A screen left running reloads itself once the server reports a new build, and never in the middle of a running clock | PASS |
+| Display | Mid-show re-fit | Advancing to a new question re-measures the screen instead of keeping the size it booted with | PASS |
 | Updater | Locked-down host | A server-config file PHP may not write (`.htaccess`, `.user.ini`) is reported as a warning and the update still completes; the host's own file is left untouched | PASS |
 | Updater | Genuine write failure | An application file that cannot be written still fails the update and names the folder to check | PASS |
 | PHP limits | Self-service | Settings writes a `.user.ini` where the host allows it, and shows the exact text to upload where it does not | PASS |
@@ -161,7 +166,7 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 
 ## What was verified how
 
-**Automated** (`tests/verify.php`, 322 assertions; `tests/layout.js`, 30 browser assertions): everything in the table above
+**Automated** (`tests/verify.php`, 334 assertions; `tests/layout.js`, 32 browser assertions): everything in the table above
 except where noted below. The suite drives the real HTTP application with real
 cookies and CSRF tokens, and asserts against the live database.
 
@@ -227,6 +232,10 @@ throwaway branch carrying a deliberately broken migration.
 5. **Rehearsal games are kept, not discarded.** They are simply excluded from
    history, statistics, the hall of fame and certificates. Filter for them in
    **Admin → Reports → Games** if you want to review a practice run.
-6. **The updater needs `curl` and `zip`.** Without them the rest of the
+6. **After an update, reload the display once.** It now does this for itself —
+   the screen notices the new build within a few seconds and reloads when no
+   clock is running — but a manual reload is instant. Asset addresses change
+   with every update, so no browser can serve a stale stylesheet any more.
+7. **The updater needs `curl` and `zip`.** Without them the rest of the
    application works normally; only the update manager is unavailable, and the
    Updates page says so.

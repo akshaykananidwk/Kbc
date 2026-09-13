@@ -793,3 +793,59 @@ $suite->check('.user.ini is never shipped in the repository itself',
     !$existedBefore, 'it is created on the server, never updated over');
 $suite->check('the template ships for manual installation',
     is_file(\App\Core\Application::instance()->rootPath('docs/user.ini.example')));
+
+// ---------------------------------------------------------------------------
+// 31. An update actually reaches the screens
+// ---------------------------------------------------------------------------
+$suite->module('31. An update actually reaches the screens');
+
+// Browsers are told to cache CSS and JS for a week, so an updated show would
+// keep running last week's stylesheet unless the address changes with it.
+$http->get('/display');
+$displayHtml = $http->body;
+preg_match('/assets\/css\/display\.css\?v=(\d+)/', $displayHtml, $cssVersion);
+$suite->check('the display stylesheet address carries a version',
+    ($cssVersion[1] ?? '') !== '', $cssVersion[0] ?? 'no version in the URL');
+$suite->check('so does the display script',
+    (bool) preg_match('/assets\/js\/display\.js\?v=\d+/', $displayHtml));
+
+$http->get('/admin');
+$suite->check('and every admin asset', (bool) preg_match('/assets\/css\/admin\.css\?v=\d+/', $http->body));
+$http->get('/operator');
+$suite->check('and every operator asset', (bool) preg_match('/assets\/(css|js)\/operator\.(css|js)\?v=\d+/', $http->body));
+
+$cssFile = \App\Core\Application::publicPath('assets/css/display.css');
+$suite->equals('the version is the file\'s own timestamp', (string) ($cssVersion[1] ?? ''), (string) filemtime($cssFile));
+
+// Touching the file must change the address - that is what makes an update
+// visible on a television that has been open for a week.
+$before = (string) ($cssVersion[1] ?? '');
+touch($cssFile, time() + 5);
+clearstatcache(true, $cssFile);
+$http->get('/display');
+preg_match('/assets\/css\/display\.css\?v=(\d+)/', $http->body, $after);
+$suite->check('changing the file changes the address browsers ask for',
+    ($after[1] ?? '') !== '' && ($after[1] ?? '') !== $before,
+    $before . ' -> ' . ($after[1] ?? '?'));
+touch($cssFile);
+
+$suite->check('a missing asset still produces a usable URL',
+    !str_contains(\App\Core\Application::asset('assets/css/not-here.css'), '?v='),
+    \App\Core\Application::asset('assets/css/not-here.css'));
+
+// The version on screen must describe the code that is running, so "did the
+// update land?" can be answered by looking.
+$versionFile = trim((string) file_get_contents(\App\Core\Application::instance()->rootPath('VERSION')));
+$suite->check('the VERSION file ships with the package', $versionFile !== '', $versionFile);
+$suite->equals('the reported version is the one on disk',
+    UpdateService::make($db)->currentVersion(), $versionFile);
+
+SettingsService::set('current_version', '0.0.1-stale');
+$suite->equals('a stale setting from an earlier update cannot mislead',
+    UpdateService::make($db)->currentVersion(), $versionFile);
+SettingsService::set('current_version', $versionFile);
+
+$http->get('/display');
+$suite->check('the display shows the running version to the operator',
+    str_contains($http->body, 'd-controls__version') && str_contains($http->body, 'v' . $versionFile),
+    'v' . $versionFile);

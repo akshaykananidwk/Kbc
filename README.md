@@ -41,7 +41,9 @@ The two screens stay synchronised through a lightweight long-poll against
 - **Transaction safety.** Result + prize + gift stock + game status move together or
   not at all.
 - **One-click GitHub updates** with automatic backup, protected paths, database
-  migration, cache clear and automatic rollback on failure.
+  migration, cache clear and automatic rollback on failure. Stylesheets and scripts
+  carry a version in their address, and the audience screen reloads itself when a new
+  build lands — so an update actually reaches the television, with nothing to clear.
 - **Fits any screen, by itself.** Every size on the audience screen is a multiple of one
   unit that the screen measures and sets for itself, so a 4K TV, a 4:3 projector and a
   short laptop panel all show the whole question, all four options, the full prize

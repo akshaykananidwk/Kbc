@@ -86,9 +86,43 @@ async function withLiveGame(browser, email, password) {
     return { ok: true, game: created.data.game_code };
   });
 
+  // Tokens rotate, so each call fetches a fresh one the way the operator
+  // screen would.
+  const call = (path, body) => page.evaluate(async ({ path, body }) => {
+    const html = await fetch('/operator/setup', { credentials: 'same-origin' }).then((r) => r.text());
+    const match = html.match(/name="csrf-token" content="([^"]+)"/) ||
+                  html.match(/name="_token" value="([^"]+)"/);
+    const token = match ? match[1] : '';
+    return fetch(path, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+                 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': token },
+      body: JSON.stringify(body || {})
+    }).then((r) => r.json()).catch((e) => ({ success: false, message: String(e) }));
+  }, { path, body });
+
   return {
     ok: started.ok,
     why: started.why,
+    /** Answers the question and serves the next one, so a new state is rendered. */
+    async nextQuestion() {
+      const state = await page.evaluate(() => fetch('/api/game/state', {
+        credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      }).then((r) => r.json()));
+      const option = state && state.data && state.data.private ? state.data.private.correct_option : 'A';
+
+      const steps = [];
+      steps.push(await call('/api/game/select', { option }));
+      steps.push(await call('/api/game/lock', {}));
+      steps.push(await call('/api/game/reveal', {}));
+      const moved = await call('/api/game/next', {});
+      steps.push(moved);
+      if (moved.success) { await call('/api/game/timer/start', {}); }
+      if (!moved.success && process.env.LAYOUT_DEBUG) {
+        console.log('  steps:', steps.map((r) => (r.success ? 'ok' : 'FAIL:' + r.message)).join(' | '));
+      }
+      return moved.success === true;
+    },
     async finish() {
       if (started.ok) {
         await page.evaluate(async () => {
@@ -178,6 +212,40 @@ async function withLiveGame(browser, email, password) {
     check(screen.name, 'the screen scales to the panel', m.fit >= 0.55 && m.fit <= 1.45,
       'scale ' + m.fit.toFixed(2));
 
+    await page.close();
+  }
+
+  // A new question is a new amount of text: the screen has to re-measure,
+  // not keep the size it happened to boot with.
+  if (live.ok) {
+    const page = await browser.newPage({ viewport: { width: 1536, height: 730 } });
+    await page.goto(BASE + '/display', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(900);
+    const before = await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--d-fit')) || 0);
+
+    const moved = await live.nextQuestion();
+    await page.waitForTimeout(2500);
+
+    const after = await page.evaluate(() => {
+      const centre = document.getElementById('dCentre');
+      const question = document.querySelector('.d-question');
+      return {
+        fit: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--d-fit')) || 0,
+        text: (document.getElementById('dQuestion') || {}).textContent || '',
+        overflow: Math.max(
+          centre ? centre.scrollHeight - centre.clientHeight : 0,
+          question ? question.scrollHeight - question.clientHeight : 0
+        )
+      };
+    });
+
+    check('mid-show', 'a new question is re-measured, not left at boot size',
+      moved && after.overflow <= 6,
+      moved ? after.overflow + 'px overflow, scale ' + before.toFixed(2) + ' -> ' + after.fit.toFixed(2)
+            : 'could not advance the game');
+    check('mid-show', 'the new question is on screen in full',
+      after.text.trim().length > 0, after.text.trim().slice(0, 42));
     await page.close();
   }
 

@@ -331,10 +331,22 @@ final class UpdateService
         );
     }
 
+    /**
+     * The version of the code actually on disk.
+     *
+     * The VERSION file ships with the package, so it always matches the files
+     * that are running - including after a rollback, when the setting written
+     * by the last successful update would be misleading.
+     */
     public function currentVersion(): string
     {
+        $onDisk = (string) Config::get('app.version', '');
+        if ($onDisk !== '') {
+            return $onDisk;
+        }
+
         $stored = SettingsService::string('current_version');
-        return $stored !== '' ? $stored : (string) Config::get('app.version', '1.0.0');
+        return $stored !== '' ? $stored : '1.0.0';
     }
 
     /** @return array<int,string> */

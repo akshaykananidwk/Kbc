@@ -32,6 +32,9 @@ final class DisplayController extends Controller
             'animations'     => SettingsService::bool('animations_enabled', true),
             'soundEnabled'   => SettingsService::bool('sound_enabled', true),
             'timerStyle'     => SettingsService::string('timer_style', 'ring'),
+            // Shown in the hover controls so anyone can see at a glance which
+            // build the television is actually running.
+            'appVersion'     => \App\Services\UpdateService::make()->currentVersion(),
             'ganpatiImage'   => \App\Core\Application::uploadUrl(SettingsService::string('ganpati_image', '')),
             'welcomeHeading' => SettingsService::string('welcome_heading', 'ગણપતિ બાપા મોરિયા'),
             'welcomeSub'     => SettingsService::string('welcome_subheading', ''),

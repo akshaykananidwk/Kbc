@@ -135,9 +135,26 @@ final class Application
         return ($base === '' ? '' : $base) . ($path === '/' ? '/' : rtrim($path, '/'));
     }
 
+    /**
+     * URL for a stylesheet, script or image that ships with the application.
+     *
+     * The address carries the file's own timestamp, so a browser fetches the
+     * new file the moment an update changes it. Without this, the week-long
+     * cache headers meant an updated show could still be running last week's
+     * stylesheet on the television.
+     */
     public static function asset(string $path): string
     {
-        return self::url('/public/' . ltrim($path, '/'));
+        $clean = ltrim($path, '/');
+        $url = self::url('/public/' . $clean);
+
+        $file = self::publicPath($clean);
+        $stamp = is_file($file) ? (string) @filemtime($file) : '';
+        if ($stamp === '' || $stamp === '0') {
+            return $url;
+        }
+
+        return $url . (str_contains($url, '?') ? '&' : '?') . 'v=' . $stamp;
     }
 
     public static function uploadUrl(?string $relative): string

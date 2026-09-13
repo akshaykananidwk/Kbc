@@ -51,6 +51,7 @@
     if (hint) hint.hidden = true;
     applyMusicBed();
     scheduleFit();
+    checkForNewBuild();
   };
 
   /** Chooses which music bed suits the current game state. */
@@ -222,6 +223,28 @@
     document.fonts.ready.then(scheduleFit).catch(function () {});
   }
 
+  /* --- Refresh after an update ---------------------------------------------
+   * The screen is left running for hours. When the server starts reporting a
+   * different build, reload once so the new stylesheet and script are used -
+   * but never in the middle of a running clock.
+   * ------------------------------------------------------------------------ */
+  var bootVersion = (state.settings && state.settings.app_version) || '';
+  var reloadPending = false;
+
+  function checkForNewBuild() {
+    var current = (state.settings && state.settings.app_version) || '';
+    if (!current) return;
+
+    // The version arrives with the first poll, not always with the page.
+    if (!bootVersion) { bootVersion = current; return; }
+    if (current === bootVersion) return;
+
+    reloadPending = true;
+    if (timerRunning) return;   // wait for the question to finish
+
+    window.setTimeout(function () { window.location.reload(); }, 400);
+  }
+
   function render() {
     syncTimer();
     settings = state.settings || settings;
@@ -275,6 +298,11 @@
       sound_volume: settings.sound_volume
     });
     applyMusicBed();
+
+    // Re-measure on every change: a longer question, a fifth option or a
+    // revealed answer all change how much has to fit on the screen.
+    scheduleFit();
+    checkForNewBuild();
   }
 
   /**
@@ -994,6 +1022,9 @@
   render();
   scheduleFit();
   window.setInterval(paintTimer, 100);
+  window.setInterval(function () {
+    if (reloadPending && !timerRunning) { window.location.reload(); }
+  }, 3000);
   window.setInterval(paintVoteCountdown, 500);
   window.setInterval(paintFffClock, 150);
   window.setTimeout(poll, 400);

@@ -135,6 +135,10 @@ final class DisplayApiController extends Controller
     private function displaySettings(): array
     {
         return [
+            // The television is often left open for days. Telling it which
+            // build the server is running lets it refresh itself after an
+            // update instead of showing yesterday's screen all evening.
+            'app_version'        => (string) \App\Core\Config::get('app.version', ''),
             'site_name'          => SettingsService::string('site_name', 'Ganpati Bapa Quiz Show'),
             'site_tagline'       => SettingsService::string('site_tagline', ''),
             'site_logo'          => \App\Core\Application::uploadUrl(SettingsService::string('site_logo', '')),

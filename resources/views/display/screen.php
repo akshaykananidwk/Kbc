@@ -41,6 +41,7 @@ $config = [
 <div class="d-controls">
   <button type="button" id="dFullscreen">Full screen</button>
   <button type="button" id="dReload">Reload</button>
+  <span class="d-controls__version" title="The version running on this screen">v<?= e($appVersion) ?></span>
 </div>
 <div class="d-offline" id="dOffline" hidden>Connection lost — retrying…</div>
 <div class="d-audio-hint" id="dAudioHint">
