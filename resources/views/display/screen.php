@@ -163,7 +163,20 @@ $config = [
   <div class="d-overlay__icon" id="dResultIcon"></div>
   <div class="d-overlay__title" id="dResultTitle"></div>
   <div class="d-overlay__sub" id="dResultSub"></div>
-  <div class="d-overlay__sub" id="dResultDetail"></div>
+
+  <!-- What was answered, and what the answer actually was -->
+  <div class="d-answers" id="dResultAnswers" hidden>
+    <div class="d-answers__row d-answers__row--given" id="dResultGiven" hidden>
+      <span class="d-answers__label" id="dResultGivenLabel">તમારો જવાબ · Your answer</span>
+      <span class="d-answers__value"><span class="d-answers__key" id="dResultGivenKey"></span><span id="dResultGivenText"></span></span>
+    </div>
+    <div class="d-answers__row d-answers__row--correct" id="dResultRight" hidden>
+      <span class="d-answers__label">સાચો જવાબ · Correct answer</span>
+      <span class="d-answers__value"><span class="d-answers__key" id="dResultRightKey"></span><span id="dResultRightText"></span></span>
+    </div>
+  </div>
+
+  <div class="d-overlay__note" id="dResultExplanation" hidden></div>
   <div class="d-overlay__sub" id="dResultAmountLabel"></div>
   <div class="d-overlay__amount" id="dResultAmount"></div>
   <div class="d-overlay__gift" id="dResultGift"></div>

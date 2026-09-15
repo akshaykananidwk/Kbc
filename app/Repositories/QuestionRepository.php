@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Services\SettingsService;
+
 final class QuestionRepository extends Repository
 {
     protected string $table = 'questions';
@@ -187,10 +189,16 @@ final class QuestionRepository extends Repository
             $where[] = 'NOT EXISTS (SELECT 1 FROM game_questions gq WHERE gq.question_id = q.id)';
         }
 
+        // Rotation only matters when questions may be served again: it puts the
+        // ones seen least (and longest ago) first, so a bank of 200 questions is
+        // worked through before anything comes back.
+        $rotate = $allowReuseAcrossGames && SettingsService::bool('question_rotation', true);
+        $rotation = $rotate ? 'q.times_served ASC, q.last_served_at IS NULL DESC, q.last_served_at ASC, ' : '';
+
         // Preferred: a question explicitly pinned to this level.
         $pinned = $this->db->selectOne(
             'SELECT q.* FROM questions q WHERE ' . implode(' AND ', $where)
-            . ' AND q.prize_level = :level ORDER BY q.sort_order ASC, q.id ASC LIMIT 1',
+            . ' AND q.prize_level = :level ORDER BY ' . $rotation . 'q.sort_order ASC, q.id ASC LIMIT 1',
             $bindings + ['level' => $levelNo]
         );
         if ($pinned !== null) {
@@ -213,7 +221,9 @@ final class QuestionRepository extends Repository
             $modeBindings['diff'] = $difficulty;
         }
 
-        $order = $mode === 'random' ? 'RAND()' : 'q.sort_order ASC, q.id ASC';
+        // Random still means random - but among the questions that have waited
+        // longest, not the whole bank, so the same few never keep reappearing.
+        $order = $rotation . ($mode === 'random' ? 'RAND()' : 'q.sort_order ASC, q.id ASC');
 
         $row = $this->db->selectOne(
             'SELECT q.* FROM questions q WHERE ' . implode(' AND ', $modeWhere) . ' ORDER BY ' . $order . ' LIMIT 1',
@@ -278,6 +288,46 @@ final class QuestionRepository extends Repository
         return $this->db->select(
             'SELECT id, question_text, difficulty, times_used, times_correct, times_wrong
              FROM questions WHERE times_used > 0 ORDER BY times_used DESC LIMIT ' . max(1, $limit)
+        );
+    }
+
+    /**
+     * How the question bank stands right now, in the terms a host cares
+     * about before a show.
+     *
+     * @return array{total:int,fresh:int,served:int,cycle:int}
+     */
+    public function bankStatus(): array
+    {
+        $row = $this->db->selectOne(
+            "SELECT COUNT(*) AS total,
+                    SUM(times_served = 0) AS fresh,
+                    COALESCE(MIN(times_served), 0) AS cycle
+             FROM questions WHERE status = 'active'"
+        ) ?? [];
+
+        $total = (int) ($row['total'] ?? 0);
+        $fresh = (int) ($row['fresh'] ?? 0);
+
+        return [
+            'total'  => $total,
+            'fresh'  => $fresh,
+            'served' => $total - $fresh,
+            // How many full passes through the bank have been completed.
+            'cycle'  => (int) ($row['cycle'] ?? 0),
+        ];
+    }
+
+    /**
+     * Marks a question as served, which is what the rotation orders by.
+     * Recorded the moment it goes on air - including in a rehearsal, so a
+     * practice run does not make the same questions come up again that night.
+     */
+    public function markServed(int $questionId): void
+    {
+        $this->db->run(
+            'UPDATE questions SET times_served = times_served + 1, last_served_at = :now WHERE id = :id',
+            ['now' => date('Y-m-d H:i:s'), 'id' => $questionId]
         );
     }
 

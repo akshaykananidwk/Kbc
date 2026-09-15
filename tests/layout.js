@@ -105,6 +105,21 @@ async function withLiveGame(browser, email, password) {
     ok: started.ok,
     why: started.why,
     /** Answers the question and serves the next one, so a new state is rendered. */
+    /** Answers deliberately wrongly, so the reveal can be inspected. */
+    async answerWrongly() {
+      const state = await page.evaluate(() => fetch('/api/game/state', {
+        credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      }).then((r) => r.json()));
+      const correct = state && state.data && state.data.private ? state.data.private.correct_option : 'A';
+      const options = (state.data.question && state.data.question.options) || {};
+      const wrong = ['A', 'B', 'C', 'D'].find((k) => k !== correct && options[k] !== null && options[k] !== undefined);
+
+      await call('/api/game/select', { option: wrong });
+      await call('/api/game/lock', {});
+      const revealed = await call('/api/game/reveal', {});
+      return { correct, wrong, ok: revealed.success === true };
+    },
+
     async nextQuestion() {
       const state = await page.evaluate(() => fetch('/api/game/state', {
         credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -246,6 +261,74 @@ async function withLiveGame(browser, email, password) {
             : 'could not advance the game');
     check('mid-show', 'the new question is on screen in full',
       after.text.trim().length > 0, after.text.trim().slice(0, 42));
+    await page.close();
+  }
+
+  // Selecting and revealing an answer must not resize the screen, and the
+  // board itself has to say which answer was wrong and which was right.
+  if (live.ok) {
+    const page = await browser.newPage({ viewport: { width: 1536, height: 730 } });
+    await page.goto(BASE + '/display', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
+
+    const scale = () => page.evaluate(() =>
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--d-fit')) || 0);
+    const onQuestion = await scale();
+
+    const answer = await live.answerWrongly();
+    await page.waitForTimeout(1400);
+    const onReveal = await scale();
+
+    check('reveal', 'revealing an answer does not resize the screen',
+      answer.ok && Math.abs(onReveal - onQuestion) < 0.01,
+      'scale ' + onQuestion.toFixed(3) + ' -> ' + onReveal.toFixed(3));
+
+    const board = await page.evaluate(() => {
+      const out = { wrong: '', correct: '', widest: 0, columnRight: 0 };
+      document.querySelectorAll('.d-option').forEach((o) => {
+        const key = (o.querySelector('.d-option__key') || {}).textContent || '';
+        if (o.classList.contains('is-wrong')) out.wrong = key;
+        if (o.classList.contains('is-correct')) out.correct = key;
+        out.widest = Math.max(out.widest, Math.round(o.getBoundingClientRect().right));
+      });
+      const centre = document.getElementById('dCentre');
+      out.columnRight = centre ? Math.round(centre.getBoundingClientRect().right) : 0;
+      return out;
+    });
+
+    check('reveal', 'the answer given is marked wrong', board.wrong === answer.wrong,
+      board.wrong ? 'option ' + board.wrong + ' in red' : 'nothing marked wrong');
+    check('reveal', 'the right answer is marked correct', board.correct === answer.correct,
+      board.correct ? 'option ' + board.correct + ' in green' : 'nothing marked correct');
+    check('reveal', 'a highlighted option stays inside its column',
+      board.widest <= board.columnRight + 2,
+      board.widest + 'px vs column edge ' + board.columnRight + 'px');
+
+    // The panel follows, and spells the answer out.
+    await page.waitForTimeout(2400);
+    const panel = await page.evaluate(() => {
+      const overlay = document.getElementById('dResultOverlay');
+      const text = (id) => (document.getElementById(id) || {}).textContent || '';
+      return {
+        shown: overlay ? !overlay.hidden : false,
+        title: text('dResultTitle'),
+        given: text('dResultGivenKey') + ' ' + text('dResultGivenText'),
+        right: text('dResultRightKey') + ' ' + text('dResultRightText'),
+        overflow: overlay ? overlay.scrollHeight - overlay.clientHeight : 0
+      };
+    });
+
+    check('reveal', 'the panel then names both answers',
+      panel.shown && panel.given.trim().length > 1 && panel.right.trim().length > 1,
+      panel.shown ? panel.given.trim() + '  ->  ' + panel.right.trim() : 'panel never appeared');
+    check('reveal', 'the panel fits the screen it is shown on', panel.overflow <= 6,
+      panel.overflow + 'px overflow');
+
+    const afterPanel = await scale();
+    check('reveal', 'and showing it still does not resize the board',
+      Math.abs(afterPanel - onQuestion) < 0.01,
+      'scale ' + onQuestion.toFixed(3) + ' -> ' + afterPanel.toFixed(3));
+
     await page.close();
   }
 

@@ -130,37 +130,48 @@
   var FIT_MAX = 1.45;
   var fitScheduled = false;
   var currentFit = 1;
+  var lastSignature = '';
 
-  function fitBoxes() {
+  /**
+   * Measurement must see the real layout, not the decorative scaling of a
+   * selected or revealed option: a highlighted option is 5% wider than its
+   * box, which used to read as "this does not fit" and shrank the whole
+   * screen the instant an answer was revealed.
+   */
+  function measure(fn) {
+    var stage = document.getElementById('dRoot');
+    if (stage) { stage.classList.add('is-measuring'); }
+    try {
+      return fn();
+    } finally {
+      if (stage) { stage.classList.remove('is-measuring'); }
+    }
+  }
+
+  /** The boxes that make up the game board (never the overlays). */
+  function boardBoxes() {
     var boxes = [];
     var main = el('dMain');
     var welcome = el('dWelcome');
+
     if (main && !main.hidden) {
       boxes.push(el('dCentre') || main);
-      // Measured separately: the question box clips its own overflow, so a
-      // long question would otherwise never register as too big.
+      // Measured separately: these clip their own overflow, so a long
+      // question would otherwise never register as too big.
       var question = document.querySelector('.d-question');
       if (question) boxes.push(question);
       var options = el('dOptions');
       if (options) boxes.push(options);
     }
     if (welcome && !welcome.hidden) boxes.push(welcome);
-    var overlays = document.querySelectorAll('.d-overlay');
-    for (var i = 0; i < overlays.length; i++) {
-      if (!overlays[i].hidden) boxes.push(overlays[i]);
-    }
     return boxes;
   }
 
-  /** True when nothing visible is taller or wider than the space it has. */
-  function contentFits() {
-    // The stage itself is not measured: its decorative corner ornaments sit
-    // deliberately outside the viewport and would always read as overflow.
-    // A few pixels of slack: sub-pixel line boxes make a box that fits
-    // perfectly well report one or two pixels of overflow.
-    var SLACK = 4;
+  // A few pixels of slack: sub-pixel line boxes make a box that fits
+  // perfectly well report one or two pixels of overflow.
+  var SLACK = 4;
 
-    var boxes = fitBoxes();
+  function boxesFit(boxes) {
     for (var i = 0; i < boxes.length; i++) {
       var box = boxes[i];
       if (box.scrollHeight > box.clientHeight + SLACK) return false;
@@ -174,6 +185,29 @@
     document.documentElement.style.setProperty('--d-fit', String(value));
   }
 
+  /**
+   * What is on the screen, in the terms that decide how big it can be.
+   * Selecting, locking or revealing an answer does not change this, so the
+   * board keeps exactly the size it had - no twitch mid-question.
+   */
+  function layoutSignature() {
+    var question = state.question || {};
+    var options = question.options || {};
+    var count = 0;
+    for (var key in options) { if (options[key] !== null) count++; }
+
+    return [
+      window.innerWidth, window.innerHeight,
+      el('dMain') && !el('dMain').hidden ? 'game' : 'idle',
+      (question.text || '').length,
+      count,
+      question.image ? 'i' : '', question.video ? 'v' : '', question.audio ? 'a' : '',
+      (state.lifelines || []).length,
+      state.poll && state.poll.status === 'open' ? 'poll' : '',
+      config.showLadder ? (state.ladder || []).length : 0
+    ].join('|');
+  }
+
   /** Shrinks only the prize ladder until its rows fit their column. */
   function fitLadder() {
     var ladder = el('dLadder');
@@ -182,45 +216,86 @@
     var value = 1;
     document.documentElement.style.setProperty('--d-ladder-fit', '1');
     for (var step = 0; step < 10; step++) {
-      if (ladder.scrollHeight <= ladder.clientHeight + 4 && ladder.scrollWidth <= ladder.clientWidth + 4) break;
+      if (ladder.scrollHeight <= ladder.clientHeight + SLACK && ladder.scrollWidth <= ladder.clientWidth + SLACK) break;
       value -= 0.07;
-      if (value < 0.45) { value = 0.45; document.documentElement.style.setProperty('--d-ladder-fit', '0.45'); break; }
+      if (value < 0.45) { document.documentElement.style.setProperty('--d-ladder-fit', '0.45'); break; }
       document.documentElement.style.setProperty('--d-ladder-fit', value.toFixed(3));
     }
   }
 
-  function fitToScreen() {
-    fitScheduled = false;
-    document.documentElement.style.setProperty('--d-ladder-fit', '1');
-
-    // Grow first: on a big screen the show should use the whole panel.
-    setFit(FIT_MAX);
-    if (contentFits()) { fitLadder(); return; }
-
-    // Otherwise binary-search the largest multiplier that still fits.
-    var low = FIT_MIN, high = FIT_MAX, best = FIT_MIN;
-    for (var step = 0; step < 9; step++) {
-      var mid = (low + high) / 2;
-      setFit(mid);
-      if (contentFits()) { best = mid; low = mid; } else { high = mid; }
+  /** Full-screen panels size themselves, independently of the board. */
+  function fitOverlay() {
+    var overlay = null;
+    var all = document.querySelectorAll('.d-overlay');
+    for (var i = 0; i < all.length; i++) {
+      if (!all[i].hidden) { overlay = all[i]; break; }
     }
-    setFit(best);
-    fitLadder();
+    document.documentElement.style.setProperty('--d-overlay-fit', '1');
+    if (!overlay) return;
+
+    var value = 1;
+    for (var step = 0; step < 12; step++) {
+      if (overlay.scrollHeight <= overlay.clientHeight + SLACK && overlay.scrollWidth <= overlay.clientWidth + SLACK) break;
+      value -= 0.07;
+      if (value < 0.4) { document.documentElement.style.setProperty('--d-overlay-fit', '0.4'); break; }
+      document.documentElement.style.setProperty('--d-overlay-fit', value.toFixed(3));
+    }
   }
 
-  function scheduleFit() {
-    if (fitScheduled) return;
-    fitScheduled = true;
-    window.requestAnimationFrame(function () {
-      window.requestAnimationFrame(fitToScreen);
+  function fitToScreen(force) {
+    fitScheduled = false;
+
+    var signature = layoutSignature();
+    var boardChanged = signature !== lastSignature;
+    lastSignature = signature;
+
+    measure(function () {
+      fitOverlay();
+
+      if (!boardChanged && !force) {
+        // Nothing that affects size has changed. Re-measure only to catch a
+        // board that no longer fits; otherwise leave it exactly as it is, so
+        // selecting an answer never resizes the screen.
+        document.documentElement.style.setProperty('--d-ladder-fit', '1');
+        if (boxesFit(boardBoxes())) { fitLadder(); return; }
+      }
+
+      document.documentElement.style.setProperty('--d-ladder-fit', '1');
+
+      // Grow first: on a big screen the show should use the whole panel.
+      setFit(FIT_MAX);
+      if (boxesFit(boardBoxes())) { fitLadder(); return; }
+
+      // Otherwise binary-search the largest multiplier that still fits.
+      var low = FIT_MIN, high = FIT_MAX, best = FIT_MIN;
+      for (var step = 0; step < 9; step++) {
+        var mid = (low + high) / 2;
+        setFit(mid);
+        if (boxesFit(boardBoxes())) { best = mid; low = mid; } else { high = mid; }
+      }
+      setFit(best);
+      fitLadder();
     });
   }
 
-  window.addEventListener('resize', scheduleFit);
-  window.addEventListener('orientationchange', scheduleFit);
-  document.addEventListener('fullscreenchange', scheduleFit);
+  function scheduleFit(force) {
+    if (fitScheduled) return;
+    fitScheduled = true;
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () { fitToScreen(force); });
+    });
+  }
+
+  function forceFit() {
+    lastSignature = '';
+    scheduleFit(true);
+  }
+
+  window.addEventListener('resize', forceFit);
+  window.addEventListener('orientationchange', forceFit);
+  document.addEventListener('fullscreenchange', forceFit);
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(scheduleFit).catch(function () {});
+    document.fonts.ready.then(forceFit).catch(function () {});
   }
 
   /* --- Refresh after an update ---------------------------------------------
@@ -716,10 +791,43 @@
       showFinal();
       return;
     }
-    if (s === 'CORRECT') { showResult('correct'); return; }
-    if (s === 'WRONG') { showResult('wrong'); return; }
-    if (s === 'TIME_UP') { showResult('timeup'); return; }
+    var kind = s === 'CORRECT' ? 'correct' : (s === 'WRONG' ? 'wrong' : (s === 'TIME_UP' ? 'timeup' : ''));
+    if (kind !== '') { queueResult(kind); return; }
+
+    cancelResult();
     hideOverlays();
+  }
+
+  /**
+   * Holds the result panel back for a moment so the audience first sees the
+   * board itself answer the question: the chosen option turning red and the
+   * right one turning green. Then the panel spells it out.
+   */
+  var resultTimer = null;
+  var resultShownFor = '';
+
+  function cancelResult() {
+    if (resultTimer) { window.clearTimeout(resultTimer); resultTimer = null; }
+    resultShownFor = '';
+  }
+
+  function queueResult(kind) {
+    var key = kind + ':' + state.level + ':' + (state.answer.selected || '-');
+    if (resultShownFor === key) { return; }   // already handled this reveal
+    resultShownFor = key;
+
+    if (resultTimer) { window.clearTimeout(resultTimer); }
+    var overlay = el('dResultOverlay');
+    if (overlay && !overlay.hidden) { showResult(kind); return; }
+
+    // Long enough to read the board, short enough to keep the show moving.
+    var wait = kind === 'correct' ? 1600 : 2400;
+    resultTimer = window.setTimeout(function () {
+      resultTimer = null;
+      if (state.state === 'CORRECT' || state.state === 'WRONG' || state.state === 'TIME_UP') {
+        showResult(kind);
+      }
+    }, wait);
   }
 
   function showResult(kind) {
@@ -736,12 +844,43 @@
     setText('dResultTitle', title);
     setText('dResultSub', subtitle);
 
-    var detail = el('dResultDetail');
-    if (detail) {
-      var parts = [];
-      if (state.answer.selected) parts.push('Answered: ' + state.answer.selected);
-      if (state.answer.correct) parts.push('Correct: ' + state.answer.correct);
-      detail.textContent = parts.join('  ·  ');
+    // Spell out what was answered and what the answer actually was.
+    var options = (state.question && state.question.options) || {};
+    var given = state.answer.selected;
+    var right = state.answer.correct;
+    var rows = el('dResultAnswers');
+    var givenRow = el('dResultGiven');
+    var rightRow = el('dResultRight');
+
+    if (givenRow) {
+      givenRow.hidden = !given;
+      if (given) {
+        setText('dResultGivenKey', given);
+        setText('dResultGivenText', options[given] || '');
+        givenRow.classList.toggle('is-right', !!right && given === right);
+        setText('dResultGivenLabel', kind === 'timeup'
+          ? 'સમય પૂરો થયો · No answer locked'
+          : 'તમારો જવાબ · Your answer');
+      }
+    }
+    if (rightRow) {
+      // Only ever shown once the operator has revealed the result.
+      var showRight = !!right && (kind !== 'correct' || !given);
+      rightRow.hidden = !showRight;
+      if (showRight) {
+        setText('dResultRightKey', right);
+        setText('dResultRightText', options[right] || '');
+      }
+    }
+    if (rows) {
+      rows.hidden = (!givenRow || givenRow.hidden) && (!rightRow || rightRow.hidden);
+    }
+
+    var explanation = el('dResultExplanation');
+    if (explanation) {
+      var text = (state.question && state.question.explanation) || '';
+      explanation.hidden = text === '';
+      explanation.textContent = text;
     }
 
     var amount = el('dResultAmount');
@@ -763,6 +902,7 @@
     }
 
     overlay.hidden = false;
+    forceFit();
     if (kind === 'correct') { confetti(60); }
   }
 

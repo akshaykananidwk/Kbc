@@ -36,6 +36,12 @@ The two screens stay synchronised through a lightweight long-poll against
 - **Nothing hard-coded.** Prize ladder length and amounts, guaranteed (safe) levels,
   gifts, lifelines, timers, theme colours, currency, sounds and copy are all editable
   in the admin panel.
+- **A clear reveal.** On a wrong answer the chosen option turns red and the real answer
+  turns green on the board; a moment later the screen spells both out in words, with the
+  explanation. Nothing on screen changes size while an answer is chosen, locked or revealed.
+- **Rotation through the question bank.** With 150–200 questions, the least recently used
+  are served first, so every question is used before any comes back. The operator screen
+  shows how many have never been used and which round the bank is on.
 - **Configurable lifelines** — 50:50, Audience Poll (realistic or manually fixed
   percentages), Expert Advice (name, photo, confidence), and an optional Skip Question.
 - **Transaction safety.** Result + prize + gift stock + game status move together or

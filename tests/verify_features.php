@@ -529,7 +529,7 @@ $suite->check('the prize ladder scales on its own',
     str_contains($displayCss, '--ul: calc(var(--u)') && str_contains($displayJs, 'fitLadder'),
     'so a long ladder never shrinks the question');
 $suite->check('the display measures itself and fits the screen',
-    str_contains($displayJs, 'function fitToScreen') && str_contains($displayJs, "addEventListener('resize', scheduleFit)"));
+    str_contains($displayJs, 'function fitToScreen') && str_contains($displayJs, "addEventListener('resize', forceFit)"));
 $suite->check('the timer keeps its own space',
     str_contains($displayCss, '.d-timer { flex: 0 0 auto; }'), 'never squeezed off the screen');
 $suite->check('the stage is a fixed grid that cannot overflow',
@@ -849,3 +849,163 @@ $http->get('/display');
 $suite->check('the display shows the running version to the operator',
     str_contains($http->body, 'd-controls__version') && str_contains($http->body, 'v' . $versionFile),
     'v' . $versionFile);
+
+// ---------------------------------------------------------------------------
+// 32. Showing the right answer, and using the whole question bank
+// ---------------------------------------------------------------------------
+$suite->module('32. Right answer shown, whole bank used');
+
+$displayCss = (string) file_get_contents(\App\Core\Application::publicPath('assets/css/display.css'));
+$displayJs  = (string) file_get_contents(\App\Core\Application::publicPath('assets/js/display.js'));
+$screen     = (string) file_get_contents(\App\Core\Application::instance()->rootPath('resources/views/display/screen.php'));
+
+// The screen must not resize when an answer is selected or revealed: a
+// highlighted option is drawn larger than its box, and that used to read as
+// "this does not fit" and shrank the whole board.
+$suite->check('measurement ignores the highlight animations',
+    str_contains($displayCss, '.d-stage.is-measuring *') && str_contains($displayJs, "classList.add('is-measuring')"));
+$suite->check('a highlighted option settles back to its own size',
+    !preg_match('/\.d-option\.is-(correct|selected)\s*\{[^}]*transform:\s*scale/', $displayCss),
+    'it pops, then returns - so it is never clipped by the prize ladder');
+$suite->check('the size is only recalculated when the layout really changes',
+    str_contains($displayJs, 'function layoutSignature'), 'no twitch mid-question');
+$suite->check('full-screen panels size themselves',
+    str_contains($displayCss, '--uo: calc(var(--u)') && str_contains($displayJs, 'function fitOverlay'),
+    'so a result panel never shrinks the board');
+
+// Wrong answers: red, green, and the answer spelled out.
+$suite->check('the board marks the wrong answer and the right one',
+    str_contains($displayJs, "classList.add('is-wrong')") && str_contains($displayJs, "classList.add('is-correct')"));
+$suite->check('red and green are actually used',
+    str_contains($displayCss, '.d-option.is-wrong') && str_contains($displayCss, '.d-option.is-correct'));
+$suite->check('the result panel has a row for each answer',
+    str_contains($screen, 'dResultGiven') && str_contains($screen, 'dResultRight'));
+$suite->check('it names the correct answer in words, not just a letter',
+    str_contains($displayJs, "setText('dResultRightText'"), 'option text is shown');
+$suite->check('the panel waits so the coloured board can be seen first',
+    str_contains($displayJs, 'function queueResult'), 'panel follows the board');
+$suite->check('the explanation is shown once the result is revealed',
+    str_contains($displayJs, "el('dResultExplanation')"));
+
+// The display payload must carry what that panel needs - and nothing early.
+$cleanGames();
+SettingsService::set('repeat_questions', true);
+$state = $engine->createGame($participantId, null, null, false);
+$gameId = (int) $state['game_id'];
+$state = $engine->startGame($gameId);
+$correctOption = (string) $state['private']['correct_option'];
+$wrongOption = '';
+foreach (['A', 'B', 'C', 'D'] as $key) {
+    if ($key !== $correctOption && ($state['question']['options'][$key] ?? null) !== null) { $wrongOption = $key; break; }
+}
+
+$engine->startTimer($gameId);
+$engine->selectOption($gameId, $wrongOption);
+$engine->lockAnswer($gameId);
+
+$display = json_decode((string) file_get_contents($baseUrl . '/api/display/snapshot'), true)['data'] ?? [];
+$suite->check('the answer is still hidden while it is only locked',
+    $display['answer']['correct'] === null, 'present and null');
+
+$engine->revealResult($gameId);
+$display = json_decode((string) file_get_contents($baseUrl . '/api/display/snapshot'), true)['data'] ?? [];
+$suite->equals('after the reveal the display knows the right answer',
+    (string) ($display['answer']['correct'] ?? ''), $correctOption);
+$suite->equals('and which one was given', (string) ($display['answer']['selected'] ?? ''), $wrongOption);
+$suite->check('both answers have their text on the screen',
+    ($display['question']['options'][$correctOption] ?? '') !== ''
+    && ($display['question']['options'][$wrongOption] ?? '') !== '',
+    'the panel can name them');
+$engine->endGame($gameId, 'abandoned');
+$cleanGames();
+
+// Rotation: a bank of many questions must be used before anything repeats.
+$suite->module('33. Question rotation');
+$questionsRepo = new \App\Repositories\QuestionRepository();
+$db->run("DELETE FROM question_options WHERE question_id IN (SELECT id FROM questions WHERE question_text LIKE 'VERIFY ROTATION%')");
+$db->run("DELETE FROM questions WHERE question_text LIKE 'VERIFY ROTATION%'");
+$db->run("UPDATE questions SET status = 'inactive' WHERE status = 'active'");
+
+$bankSize = 12;
+for ($i = 1; $i <= $bankSize; $i++) {
+    $questionsRepo->createWithOptions([
+        'question_text'  => 'VERIFY ROTATION ' . $i,
+        'correct_option' => 'A', 'difficulty' => 'easy', 'status' => 'active',
+        'sort_order'     => $i, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
+    ], ['A' => 'one', 'B' => 'two', 'C' => 'three', 'D' => 'four']);
+}
+
+$levelsToPlay = 4;
+$playRound = static function (int $games) use ($engine, $db, $participantId, $levelsToPlay): array {
+    $served = [];
+    for ($g = 0; $g < $games; $g++) {
+        $state = $engine->createGame($participantId, null, 'random', true, true, true);
+        $id = (int) $state['game_id'];
+        $engine->startGame($id);
+        for ($level = 1; $level <= $levelsToPlay; $level++) {
+            $current = $engine->state($id, true);
+            if ($current['is_finished'] || ($current['question'] ?? null) === null) { break; }
+            $served[] = (int) $db->scalar(
+                'SELECT question_id FROM game_questions WHERE game_id = ? AND level_no = ?', [$id, $level]);
+            $engine->startTimer($id);
+            $engine->selectOption($id, (string) $current['private']['correct_option']);
+            $engine->lockAnswer($id);
+            $engine->revealResult($id);
+            if ($level < $levelsToPlay) { $engine->nextQuestion($id); }
+        }
+        $engine->endGame($id, 'completed');
+    }
+    return $served;
+};
+
+$reset = static function () use ($db) {
+    $db->run('DELETE FROM game_events');
+    $db->run('DELETE FROM game_answers');
+    $db->run('DELETE FROM game_lifelines');
+    $db->run('DELETE FROM game_questions');
+    $db->run('DELETE FROM games');
+    $db->run('UPDATE questions SET times_used = 0, times_served = 0, last_served_at = NULL');
+};
+
+SettingsService::set('question_rotation', true);
+$reset();
+$withRotation = $playRound(3);                       // 3 games x 4 questions = 12
+$distinctRotated = count(array_unique($withRotation));
+$suite->equals('rotation serves every question before repeating any',
+    $distinctRotated, $bankSize);
+$suite->equals('so nothing is served twice in the first full round',
+    max(array_count_values($withRotation)), 1);
+
+$fourth = $playRound(1);
+$suite->check('the next round starts over rather than stopping',
+    count($fourth) === $levelsToPlay, count($fourth) . ' question(s) served');
+
+SettingsService::set('question_rotation', false);
+$reset();
+$without = $playRound(3);
+$suite->check('without rotation the same questions come back while others wait',
+    count(array_unique($without)) < $bankSize,
+    count(array_unique($without)) . ' of ' . $bankSize . ' used, worst repeat ' . max(array_count_values($without)));
+SettingsService::set('question_rotation', true);
+
+$reset();
+$first = $db->selectOne("SELECT id FROM questions WHERE question_text LIKE 'VERIFY ROTATION%' ORDER BY id LIMIT 1");
+$questionsRepo->markServed((int) $first['id']);
+$row = $db->selectOne('SELECT times_served, last_served_at FROM questions WHERE id = ?', [(int) $first['id']]);
+$suite->equals('serving a question is recorded', (int) $row['times_served'], 1);
+$suite->check('with the time it was served', ($row['last_served_at'] ?? '') !== '', (string) $row['last_served_at']);
+
+$bank = $questionsRepo->bankStatus();
+$suite->equals('the bank reports its size', (int) $bank['total'], $bankSize);
+$suite->equals('and how many have never been used', (int) $bank['fresh'], $bankSize - 1);
+
+$http->get('/operator/setup');
+$suite->check('the operator sees the state of the bank before a show',
+    str_contains($http->body, 'Question bank') && str_contains($http->body, 'never used'));
+
+// Tidy the test bank away.
+$reset();
+$db->run("DELETE FROM question_options WHERE question_id IN (SELECT id FROM questions WHERE question_text LIKE 'VERIFY ROTATION%')");
+$db->run("DELETE FROM questions WHERE question_text LIKE 'VERIFY ROTATION%'");
+$db->run("UPDATE questions SET status = 'active' WHERE status = 'inactive'");
+SettingsService::set('repeat_questions', false);

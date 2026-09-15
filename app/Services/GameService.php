@@ -223,6 +223,8 @@ final class GameService
                 'served_at'    => date('Y-m-d H:i:s'),
                 'created_at'   => date('Y-m-d H:i:s'),
             ]);
+
+            $this->questions->markServed($questionId);
         }
 
         $this->games->updateById($gameId, [

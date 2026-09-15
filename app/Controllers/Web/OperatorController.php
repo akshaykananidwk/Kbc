@@ -52,6 +52,8 @@ final class OperatorController extends Controller
             'questionCount' => $questions->availableCount(SettingsService::bool('repeat_questions', false)),
             'totalActive'   => $questions->activeCount(),
             'allowReuse'    => SettingsService::bool('repeat_questions', false),
+            'bank'          => $questions->bankStatus(),
+            'rotation'      => SettingsService::bool('question_rotation', true),
             'maxLevel'      => $levels->maxLevel(),
             'orderModes'    => [
                 'fixed'      => 'Fixed order (by prize level, then sort order)',

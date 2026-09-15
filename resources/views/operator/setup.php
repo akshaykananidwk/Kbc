@@ -107,6 +107,25 @@ $ready = $maxLevel > 0 && $participants !== [] && ($enoughQuestions || $totalAct
             <?= (int) $questionCount ?> available<?= $allowReuse ? '' : ' of ' . (int) $totalActive ?>
           </span>
         </li>
+        <li>
+          <span class="check-list__state"><?= $rotation ? '↻' : '▣' ?></span>
+          <span class="check-list__label">
+            Question bank
+            <small>
+              <?php if ($rotation): ?>
+                Rotating: the least recently used questions are served first, so the whole
+                bank is used before anything repeats.
+              <?php else: ?>
+                Rotation is off — a question can come back before the others have been used.
+                Turn it on in <a href="<?= e(url('/admin/settings')) ?>">Settings → Game</a>.
+              <?php endif; ?>
+            </small>
+          </span>
+          <span class="check-list__value">
+            <?= (int) $bank['total'] ?> total ·
+            <?= (int) $bank['fresh'] ?> never used<?= $bank['cycle'] > 0 ? ' · round ' . ((int) $bank['cycle'] + 1) : '' ?>
+          </span>
+        </li>
         <li class="<?= $participants !== [] ? '' : 'is-bad' ?>">
           <span class="check-list__state"><?= $participants !== [] ? '✓' : '✕' ?></span>
           <span class="check-list__label">Participants</span>
