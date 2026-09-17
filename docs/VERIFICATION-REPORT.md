@@ -1,7 +1,7 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.5.0
+**Version:** 1.6.0
 **Date:** 13 September 2026
 
 ## Test environment
@@ -151,7 +151,7 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Uploads | Admin guidance | Settings states the limit in force before anything is uploaded | PASS |
 | New game | Open game left behind | Refusal names the blocking game and its participant; one confirmation ends it and creates the new game | PASS |
 | New game | Audit | The automatic takeover is recorded as `game.replaced`; the old game is closed, never deleted | PASS |
-| Question bank | Content | 175 Gujarati questions, 35 in each of five categories; every row complete, unique and with an explanation | PASS |
+| Question bank | Content | 200 Gujarati questions, 40 in each of five categories; every row complete, unique and with an explanation | PASS |
 | Question bank | Loading | Seeded into the database and folded into the five categories a balanced show uses | PASS |
 | Question bank | Slugs | A Gujarati category name keeps the same slug, so re-saving never creates a duplicate category | PASS |
 | Balanced order | Spread | Every game asks exactly two questions from each of the five categories | PASS |
@@ -225,7 +225,7 @@ throwaway branch carrying a deliberately broken migration.
 
 ## Known behaviour worth knowing before your event
 
-1. **Current affairs go stale.** The 35 questions in કરંટ અફેર્સ are written from
+1. **Current affairs go stale.** The 40 questions in કરંટ અફેર્સ are written from
    settled events. Read through that category before each season and refresh it —
    Admin → Questions, or edit `docs/gujarati-question-bank.csv` and import it.
 2. **Balanced order needs the categories to be in rotation.** Admin → Categories

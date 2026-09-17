@@ -140,7 +140,7 @@ Review and press **Install now**. The installer:
 
 ## 6b. Loading the ready-made question bank
 
-175 Gujarati questions ship with the app, 35 in each of five categories:
+200 Gujarati questions ship with the app, 40 in each of five categories:
 ધાર્મિકતા, દેશભક્તિ, ભારતદર્શન, કરંટ અફેર્સ and જનરલ નોલેજ.
 
 Over SSH:

@@ -38,7 +38,7 @@ final class SeederService
     }
 
     /**
-     * The ready-made Gujarati question bank: 175 questions across five
+     * The ready-made Gujarati question bank: 200 questions across five
      * categories. Existing questions are never touched.
      */
     public function seedQuestionBank(): int

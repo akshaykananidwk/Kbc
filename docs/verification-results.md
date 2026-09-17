@@ -33,10 +33,10 @@
 | 4. Authorisation | operator blocked from /admin/updates | HTTP 302 | PASS |
 | 4. Authorisation | operator blocked from the settings API | You are not allowed to perform this action. | PASS |
 | 5. CRUD modules | Dashboard renders | HTTP 200, 9536b | PASS |
-| 5. CRUD modules | Questions renders | HTTP 200, 50300b | PASS |
-| 5. CRUD modules | Categories renders | HTTP 200, 39232b | PASS |
+| 5. CRUD modules | Questions renders | HTTP 200, 49796b | PASS |
+| 5. CRUD modules | Categories renders | HTTP 200, 39270b | PASS |
 | 5. CRUD modules | Participants renders | HTTP 200, 11295b | PASS |
-| 5. CRUD modules | Prize ladder renders | HTTP 200, 46846b | PASS |
+| 5. CRUD modules | Prize ladder renders | HTTP 200, 46286b | PASS |
 | 5. CRUD modules | Gifts renders | HTTP 200, 12142b | PASS |
 | 5. CRUD modules | Lifelines renders | HTTP 200, 19331b | PASS |
 | 5. CRUD modules | Game history renders | HTTP 200, 7502b | PASS |
@@ -45,23 +45,23 @@
 | 5. CRUD modules | Users renders | HTTP 200, 7078b | PASS |
 | 5. CRUD modules | Backups renders | HTTP 200, 7375b | PASS |
 | 5. CRUD modules | Updates renders | HTTP 200, 14942b | PASS |
-| 5. CRUD modules | Audit log renders | HTTP 200, 26035b | PASS |
+| 5. CRUD modules | Audit log renders | HTTP 200, 26010b | PASS |
 | 5. CRUD modules | Operator console renders | HTTP 200, 11855b | PASS |
 | 5. CRUD modules | Operator setup renders | HTTP 200, 14002b | PASS |
 | 5. CRUD modules | Display screen renders | HTTP 200, 11834b | PASS |
 | 5. CRUD modules | Home page renders | HTTP 200, 2223b | PASS |
-| 5. CRUD modules | question created | id 410 | PASS |
+| 5. CRUD modules | question created | id 450 | PASS |
 | 5. CRUD modules | question options stored | 4 | PASS |
 | 5. CRUD modules | Gujarati text stored unchanged | એક | PASS |
 | 5. CRUD modules | question updated | D | PASS |
-| 5. CRUD modules | question duplicated | copy id 411 | PASS |
+| 5. CRUD modules | question duplicated | copy id 451 | PASS |
 | 5. CRUD modules | unused question deleted | as expected | PASS |
-| 5. CRUD modules | participant created | id 58 | PASS |
+| 5. CRUD modules | participant created | id 60 | PASS |
 | 5. CRUD modules | registration number auto-assigned | as expected | PASS |
 | 5. CRUD modules | prize level created | level 12 = 640000 | PASS |
 | 5. CRUD modules | guaranteed flag stored | 1 | PASS |
 | 5. CRUD modules | prize level deleted | as expected | PASS |
-| 5. CRUD modules | gift created | id 35 | PASS |
+| 5. CRUD modules | gift created | id 36 | PASS |
 | 5. CRUD modules | gift deleted | as expected | PASS |
 | 5. CRUD modules | CSV export export | HTTP 200, UTF-8 BOM present | PASS |
 | 5. CRUD modules | CSV export games.csv | HTTP 200, UTF-8 BOM present | PASS |
@@ -76,7 +76,7 @@
 | 6. Game engine | timer starts | running | PASS |
 | 6. Game engine | timer counts down in real time | 29389ms left of 30000ms after 600ms | PASS |
 | 6. Game engine | timer pauses | TIMER_PAUSED | PASS |
-| 6. Game engine | paused timer does not drift | held at 29379ms | PASS |
+| 6. Game engine | paused timer does not drift | held at 29378ms | PASS |
 | 6. Game engine | timer resumes | running | PASS |
 | 6. Game engine | timer resets to full | 30000 | PASS |
 | 6. Game engine | 50:50 removes two options | 2 | PASS |
@@ -86,7 +86,7 @@
 | 6. Game engine | and invents no percentages | the hall answers | PASS |
 | 6. Game engine | a simulated poll totals 100% | 100 | PASS |
 | 6. Game engine | poll gives 0% to options 50:50 removed | as expected | PASS |
-| 6. Game engine | expert suggests a surviving option | suggested D | PASS |
+| 6. Game engine | expert suggests a surviving option | suggested B | PASS |
 | 7. Display screen security (the critical requirement) | correct answer is null before the reveal | present and null | PASS |
 | 7. Display screen security (the critical requirement) | explanation is null before the reveal | present and null | PASS |
 | 7. Display screen security (the critical requirement) | no "private" section in the display payload | as expected | PASS |
@@ -104,7 +104,7 @@
 | 8. Answer flow | correct answer STILL hidden after locking | still null | PASS |
 | 8. Answer flow | display shows the answer as locked | as expected | PASS |
 | 8. Answer flow | operator override unlocks the answer | unlocked | PASS |
-| 8. Answer flow | the override is written to the audit log | 30 | PASS |
+| 8. Answer flow | the override is written to the audit log | 31 | PASS |
 | 8. Answer flow | correct answer gives state CORRECT | CORRECT | PASS |
 | 8. Answer flow | prize awarded for level 1 | 500 | PASS |
 | 8. Answer flow | correct answer IS released after the reveal | B | PASS |
@@ -136,7 +136,7 @@
 | 12. Game reset and completion | reset clears used lifelines | as expected | PASS |
 | 12. Game reset and completion | reset preserves the audit log | audit rows kept and added | PASS |
 | 12. Game reset and completion | reset returns gift stock | 2 | PASS |
-| 12. Game reset and completion | unused questions are tracked across games | 182 unused of 188 active | PASS |
+| 12. Game reset and completion | unused questions are tracked across games | 207 unused of 213 active | PASS |
 | 12. Game reset and completion | clearing the ladder completes the game | completed | PASS |
 | 12. Game reset and completion | final prize is the top prize | 320000 | PASS |
 | 12. Game reset and completion | questions answered | 10 | PASS |
@@ -144,14 +144,14 @@
 | 12. Game reset and completion | timer expires without any client action | TIME_UP | PASS |
 | 12. Game reset and completion | time up is recorded as a timeout | timeout | PASS |
 | 12. Game reset and completion | time up ends the game | time_up | PASS |
-| 13. Backup and restore | database backup created | backup_2026-09-17_10-29-37_db.zip (75.3 KB) | PASS |
+| 13. Backup and restore | database backup created | backup_2026-09-17_10-54-08_db.zip (80.3 KB) | PASS |
 | 13. Backup and restore | backup contains a manifest | as expected | PASS |
 | 13. Backup and restore | dump contains every table | 29 CREATE TABLE statements | PASS |
 | 13. Backup and restore | data destroyed before the restore | as expected | PASS |
-| 13. Backup and restore | restore brings the rows back | 188 | PASS |
-| 13. Backup and restore | a safety backup was taken before restoring | backup_2026-09-17_10-29-37-1_db.zip | PASS |
+| 13. Backup and restore | restore brings the rows back | 213 | PASS |
+| 13. Backup and restore | a safety backup was taken before restoring | backup_2026-09-17_10-54-08-1_db.zip | PASS |
 | 13. Backup and restore | Gujarati text survives backup and restore byte for byte | આ સંગીત કયા વાદ્યનું છે? | PASS |
-| 13. Backup and restore | files backup created | backup_2026-09-17_10-29-37_files.zip (426.41 KB, 222 files) | PASS |
+| 13. Backup and restore | files backup created | backup_2026-09-17_10-54-09_files.zip (430.22 KB, 223 files) | PASS |
 | 13. Backup and restore | files backup contains the application | as expected | PASS |
 | 13. Backup and restore | files backup excludes existing backups | as expected | PASS |
 | 14. Migrations, cache and the updater | no migrations are pending | [] | PASS |
@@ -168,13 +168,13 @@
 | 14. Migrations, cache and the updater | protected path rule: index.php | false | PASS |
 | 14. Migrations, cache and the updater | update check runs without a repository configured | not configured (expected on a fresh install) | PASS |
 | 14. Migrations, cache and the updater | cache clear API works | Cache cleared. 0 entr(ies) removed. Uploads and the database were not touched. | PASS |
-| 15. Audit log | logged: login | 133 entries | PASS |
-| 15. Audit log | logged: game.created | 374 entries | PASS |
-| 15. Audit log | logged: game.answer_locked | 1332 entries | PASS |
-| 15. Audit log | logged: game.result_revealed | 1329 entries | PASS |
-| 15. Audit log | logged: game.reset | 31 entries | PASS |
-| 15. Audit log | logged: question.created | 61 entries | PASS |
-| 15. Audit log | audit entries record an IP address | 1286 entries with an IP | PASS |
+| 15. Audit log | logged: login | 137 entries | PASS |
+| 15. Audit log | logged: game.created | 398 entries | PASS |
+| 15. Audit log | logged: game.answer_locked | 1413 entries | PASS |
+| 15. Audit log | logged: game.result_revealed | 1410 entries | PASS |
+| 15. Audit log | logged: game.reset | 33 entries | PASS |
+| 15. Audit log | logged: question.created | 63 entries | PASS |
+| 15. Audit log | audit entries record an IP address | 1330 entries with an IP | PASS |
 | 15. Audit log | no secrets written to the audit log | as expected | PASS |
 | 16. Responsive and accessibility markup | Admin declares a viewport | as expected | PASS |
 | 16. Responsive and accessibility markup | Operator declares a viewport | as expected | PASS |
@@ -187,9 +187,9 @@
 | 17. Media settings (the inline upload fix) | music settings exist | intro and background music fields | PASS |
 | 17. Media settings (the inline upload fix) | no free-text path box for a sound setting | old text input is gone | PASS |
 | 17. Media settings (the inline upload fix) | music uploads over AJAX | File uploaded. | PASS |
-| 17. Media settings (the inline upload fix) | the uploaded music is stored in its setting | uploads/branding/20260917-9f033e143b00d02e0175410d.mp3 | PASS |
-| 17. Media settings (the inline upload fix) | the file really exists on disk | 20260917-9f033e143b00d02e0175410d.mp3 | PASS |
-| 17. Media settings (the inline upload fix) | the display API serves the music URL | /public/uploads/branding/20260917-9f033e143b00d02e0175410d.mp3 | PASS |
+| 17. Media settings (the inline upload fix) | the uploaded music is stored in its setting | uploads/branding/20260917-37b82c12740b158f3929bb9e.mp3 | PASS |
+| 17. Media settings (the inline upload fix) | the file really exists on disk | 20260917-37b82c12740b158f3929bb9e.mp3 | PASS |
+| 17. Media settings (the inline upload fix) | the display API serves the music URL | /public/uploads/branding/20260917-37b82c12740b158f3929bb9e.mp3 | PASS |
 | 17. Media settings (the inline upload fix) | a PHP file renamed to .mp3 is refused | The file content does not match its extension. | PASS |
 | 17. Media settings (the inline upload fix) | music can be removed again | as expected | PASS |
 | 17. Media settings (the inline upload fix) | the setting is cleared | as expected | PASS |
@@ -230,7 +230,7 @@
 | 22. QR codes | QR endpoint serves register | HTTP 200 | PASS |
 | 22. QR codes | QR endpoint serves display | HTTP 200 | PASS |
 | 22. QR codes | an unknown QR target is refused | 404 | PASS |
-| 23. Live audience voting | voting opens with a short code | FJ9G77 | PASS |
+| 23. Live audience voting | voting opens with a short code | 9LYY2M | PASS |
 | 23. Live audience voting | the code reaches the display | as expected | PASS |
 | 23. Live audience voting | the voting page opens on a phone | 200 | PASS |
 | 23. Live audience voting | a code of the wrong length is not routed at all | 404 | PASS |
@@ -293,20 +293,20 @@
 | 28. Screen fit and real music uploads | the settings page states the real limit | as expected | PASS |
 | 28. Screen fit and real music uploads | the upload control knows the limit before sending | as expected | PASS |
 | 28. Screen fit and real music uploads | a real 1.8 MB song uploads | File uploaded. | PASS |
-| 28. Screen fit and real music uploads | the song is stored and served | uploads/branding/20260917-d9bc8a22bbfd5ddbd56861f3.mp3 | PASS |
+| 28. Screen fit and real music uploads | the song is stored and served | uploads/branding/20260917-cf29b54d13ff5e80b1cd3093.mp3 | PASS |
 | 28. Screen fit and real music uploads | a stock 1 MB server advertises its real limit | admin is told before trying | PASS |
 | 28. Screen fit and real music uploads | an oversized upload is refused, not silently lost | 413 | PASS |
 | 28. Screen fit and real music uploads | and the message says exactly what to change | That file is too big for this server, so nothing was received. Your server currently accepts uploads up to 1 MB. To allow larger music files, raise upload_max_filesize and post_max_size: Settings -> Sound has a button that writes a .user.ini for you, and shows the text to upload by hand if your host will not let PHP write it. | PASS |
-| 29. Starting a game never dead-ends | a game is created | GQ260917-C96F | PASS |
-| 29. Starting a game never dead-ends | a second game is refused while one is open | Game GQ260917-C96F is still open for Rajesh Patel. End it and start the new game? | PASS |
-| 29. Starting a game never dead-ends | the refusal names the game that is blocking | GQ260917-C96F | PASS |
+| 29. Starting a game never dead-ends | a game is created | GQ260917-1312 | PASS |
+| 29. Starting a game never dead-ends | a second game is refused while one is open | Game GQ260917-1312 is still open for Rajesh Patel. End it and start the new game? | PASS |
+| 29. Starting a game never dead-ends | the refusal names the game that is blocking | GQ260917-1312 | PASS |
 | 29. Starting a game never dead-ends | and who was playing it | Rajesh Patel | PASS |
-| 29. Starting a game never dead-ends | the operator can take over in one step | GQ260917-FA87 | PASS |
+| 29. Starting a game never dead-ends | the operator can take over in one step | GQ260917-5520 | PASS |
 | 29. Starting a game never dead-ends | the abandoned game is closed, not deleted | abandoned | PASS |
 | 29. Starting a game never dead-ends | the takeover is written to the audit log | as expected | PASS |
 | 29. Starting a game never dead-ends | every question is now used | as expected | PASS |
 | 29. Starting a game never dead-ends | without reuse an exhausted bank is reported clearly | No unused question is available for level 1. Add more questions, or allow questions to be reused for this game. | PASS |
-| 29. Starting a game never dead-ends | allowing reuse for one game gets the show on air | ભગવદ્ ગીતામાં કુલ કેટલા અધ્યાય છે? | PASS |
+| 29. Starting a game never dead-ends | allowing reuse for one game gets the show on air | મહાભારતના રચયિતા કોણ છે? | PASS |
 | 29. Starting a game never dead-ends | the global setting is untouched | false | PASS |
 | 29. Starting a game never dead-ends | the setup screen renders | 200 | PASS |
 | 29. Starting a game never dead-ends | it offers per-game question reuse | as expected | PASS |
@@ -324,12 +324,12 @@
 | 30. Updates survive a locked-down host | the file it writes is the documented one | as expected | PASS |
 | 30. Updates survive a locked-down host | .user.ini is never shipped in the repository itself | it is created on the server, never updated over | PASS |
 | 30. Updates survive a locked-down host | the template ships for manual installation | as expected | PASS |
-| 31. An update actually reaches the screens | the display stylesheet address carries a version | assets/css/display.css?v=1789621155 | PASS |
+| 31. An update actually reaches the screens | the display stylesheet address carries a version | assets/css/display.css?v=1789621182 | PASS |
 | 31. An update actually reaches the screens | so does the display script | as expected | PASS |
 | 31. An update actually reaches the screens | and every admin asset | as expected | PASS |
 | 31. An update actually reaches the screens | and every operator asset | as expected | PASS |
-| 31. An update actually reaches the screens | the version is the file's own timestamp | 1789621155 | PASS |
-| 31. An update actually reaches the screens | changing the file changes the address browsers ask for | 1789621155 -> 1789621187 | PASS |
+| 31. An update actually reaches the screens | the version is the file's own timestamp | 1789621182 | PASS |
+| 31. An update actually reaches the screens | changing the file changes the address browsers ask for | 1789621182 -> 1789622658 | PASS |
 | 31. An update actually reaches the screens | a missing asset still produces a usable URL | tests/public/assets/css/not-here.css | PASS |
 | 31. An update actually reaches the screens | the VERSION file ships with the package | 1.5.0 | PASS |
 | 31. An update actually reaches the screens | the reported version is the one on disk | 1.5.0 | PASS |
@@ -346,38 +346,38 @@
 | 32. Right answer shown, whole bank used | the panel waits so the coloured board can be seen first | panel follows the board | PASS |
 | 32. Right answer shown, whole bank used | the explanation is shown once the result is revealed | as expected | PASS |
 | 32. Right answer shown, whole bank used | the answer is still hidden while it is only locked | present and null | PASS |
-| 32. Right answer shown, whole bank used | after the reveal the display knows the right answer | A | PASS |
-| 32. Right answer shown, whole bank used | and which one was given | B | PASS |
+| 32. Right answer shown, whole bank used | after the reveal the display knows the right answer | B | PASS |
+| 32. Right answer shown, whole bank used | and which one was given | A | PASS |
 | 32. Right answer shown, whole bank used | both answers have their text on the screen | the panel can name them | PASS |
 | 33. Question rotation | rotation serves every question before repeating any | 12 | PASS |
 | 33. Question rotation | so nothing is served twice in the first full round | 1 | PASS |
 | 33. Question rotation | the next round starts over rather than stopping | 4 question(s) served | PASS |
-| 33. Question rotation | without rotation the same questions come back while others wait | 9 of 12 used, worst repeat 2 | PASS |
+| 33. Question rotation | without rotation the same questions come back while others wait | 9 of 12 used, worst repeat 3 | PASS |
 | 33. Question rotation | serving a question is recorded | 1 | PASS |
-| 33. Question rotation | with the time it was served | 2026-09-17 10:29:43 | PASS |
+| 33. Question rotation | with the time it was served | 2026-09-17 10:54:15 | PASS |
 | 33. Question rotation | the bank reports its size | 12 | PASS |
 | 33. Question rotation | and how many have never been used | 11 | PASS |
 | 33. Question rotation | the operator sees the state of the bank before a show | as expected | PASS |
 | 34. Gujarati question bank | the question bank ships with the app | as expected | PASS |
-| 34. Gujarati question bank | it holds between 150 and 200 questions | 175 questions | PASS |
+| 34. Gujarati question bank | it holds the full 200 questions | 200 | PASS |
 | 34. Gujarati question bank | every question is complete and unique | as expected | PASS |
 | 34. Gujarati question bank | it covers five categories | 5 | PASS |
-| 34. Gujarati question bank | with the same number in each | ધાર્મિકતા=35, દેશભક્તિ=35, ભારતદર્શન=35, કરંટ અફેર્સ=35, જનરલ નોલેજ=35 | PASS |
+| 34. Gujarati question bank | with the same number in each | ધાર્મિકતા=40, દેશભક્તિ=40, ભારતદર્શન=40, કરંટ અફેર્સ=40, જનરલ નોલેજ=40 | PASS |
 | 34. Gujarati question bank | the questions are in Gujarati | ભગવાન ગણેશનું વાહન કયું છે? | PASS |
-| 34. Gujarati question bank | loaded into the database: ધાર્મિકતા | 35 active question(s) | PASS |
-| 34. Gujarati question bank | loaded into the database: દેશભક્તિ | 35 active question(s) | PASS |
-| 34. Gujarati question bank | loaded into the database: ભારતદર્શન | 36 active question(s) | PASS |
-| 34. Gujarati question bank | loaded into the database: કરંટ અફેર્સ | 35 active question(s) | PASS |
-| 34. Gujarati question bank | loaded into the database: જનરલ નોલેજ | 36 active question(s) | PASS |
+| 34. Gujarati question bank | loaded into the database: ધાર્મિકતા | 42 active question(s) | PASS |
+| 34. Gujarati question bank | loaded into the database: દેશભક્તિ | 40 active question(s) | PASS |
+| 34. Gujarati question bank | loaded into the database: ભારતદર્શન | 43 active question(s) | PASS |
+| 34. Gujarati question bank | loaded into the database: કરંટ અફેર્સ | 41 active question(s) | PASS |
+| 34. Gujarati question bank | loaded into the database: જનરલ નોલેજ | 45 active question(s) | PASS |
 | 34. Gujarati question bank | the five categories are the ones a balanced show rotates through | 5 in rotation | PASS |
 | 34. Gujarati question bank | a Gujarati name gives a stable slug | item-1aae2affd8 | PASS |
 | 34. Gujarati question bank | and different names give different slugs | item-1aae2affd8 | PASS |
 | 34. Gujarati question bank | re-seeding does not duplicate a category | as expected | PASS |
 | 35. Two questions from every category | game 1: every category is used | 5 | PASS |
-| 35. Two questions from every category | game 1: 2 question(s) from each | જનરલ નોલ=2, દેશભક્તિ=2, ધાર્મિકત=2, કરંટ અફે=2, ભારતદર્શ=2 | PASS |
+| 35. Two questions from every category | game 1: 2 question(s) from each | ભારતદર્શ=2, કરંટ અફે=2, જનરલ નોલ=2, દેશભક્તિ=2, ધાર્મિકત=2 | PASS |
 | 35. Two questions from every category | game 2: every category is used | 5 | PASS |
-| 35. Two questions from every category | game 2: 2 question(s) from each | કરંટ અફે=2, ધાર્મિકત=2, દેશભક્તિ=2, જનરલ નોલ=2, ભારતદર્શ=2 | PASS |
-| 35. Two questions from every category | and the running order differs from show to show | જનરલ→દેશભ→ધાર્→કરંટ→ભારત→જનરલ→દેશભ→ધાર્→ | PASS |
+| 35. Two questions from every category | game 2: 2 question(s) from each | જનરલ નોલ=2, ભારતદર્શ=2, દેશભક્તિ=2, કરંટ અફે=2, ધાર્મિકત=2 | PASS |
+| 35. Two questions from every category | and the running order differs from show to show | ભારત→કરંટ→જનરલ→દેશભ→ધાર્→ભારત→કરંટ→જનરલ→ | PASS |
 | 35. Two questions from every category | a level keeps its category if the game is restarted | દેશભક્તિ | PASS |
 | 35. Two questions from every category | the operator can choose the balanced order | as expected | PASS |
 | 36. Lifelines the room answers itself | the audience poll only announces itself | announce | PASS |
@@ -393,4 +393,4 @@
 | 37. Choosing which categories take part | it shows which categories are in rotation | as expected | PASS |
 | 37. Choosing which categories take part | unticking the box takes a category out of the rotation | as expected | PASS |
 | 37. Choosing which categories take part | and ticking it puts the category back | 1 | PASS |
-| 37. Choosing which categories take part | renaming a Gujarati category keeps its questions | 35 question(s) still attached | PASS |
+| 37. Choosing which categories take part | renaming a Gujarati category keeps its questions | 42 question(s) still attached | PASS |

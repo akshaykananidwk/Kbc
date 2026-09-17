@@ -1020,8 +1020,7 @@ $suite->check('the question bank ships with the app', is_file($bankFile));
 
 /** @var array<int,array<int,string>> $bankRows */
 $bankRows = require $bankFile;
-$suite->check('it holds between 150 and 200 questions',
-    count($bankRows) >= 150 && count($bankRows) <= 200, count($bankRows) . ' questions');
+$suite->equals('it holds the full 200 questions', count($bankRows), 200);
 
 $byCategory = [];
 $problems = [];
@@ -1055,7 +1054,7 @@ $suite->check('the questions are in Gujarati',
 foreach (array_keys($byCategory) as $categoryName) {
     $id = (int) ($db->scalar('SELECT id FROM question_categories WHERE name = ? LIMIT 1', [$categoryName]) ?? 0);
     $live = (int) ($db->scalar("SELECT COUNT(*) FROM questions WHERE category_id = ? AND status = 'active'", [$id]) ?? 0);
-    $suite->check('loaded into the database: ' . $categoryName, $live >= 35, $live . ' active question(s)');
+    $suite->check('loaded into the database: ' . $categoryName, $live >= 40, $live . ' active question(s)');
 }
 
 $suite->check('the five categories are the ones a balanced show rotates through',

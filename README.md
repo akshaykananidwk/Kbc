@@ -39,7 +39,7 @@ The two screens stay synchronised through a lightweight long-poll against
 - **A clear reveal.** On a wrong answer the chosen option turns red and the real answer
   turns green on the board; a moment later the screen spells both out in words, with the
   explanation. Nothing on screen changes size while an answer is chosen, locked or revealed.
-- **175 Gujarati questions ready to go** in five categories — ધાર્મિકતા, દેશભક્તિ,
+- **200 Gujarati questions ready to go** — 40 in each of five categories — ધાર્મિકતા, દેશભક્તિ,
   ભારતદર્શન, કરંટ અફેર્સ and જનરલ નોલેજ — installed with one command and editable as a
   CSV (`docs/gujarati-question-bank.csv`).
 - **Two questions from every category.** The *balanced* running order deals the show out
@@ -184,7 +184,7 @@ index.php        front controller      console.php  CLI maintenance
 php console.php migrate           # run pending migrations
 php console.php migrate:status    # what has and has not run
 php console.php seed --demo       # seed defaults (and demo content)
-php console.php seed --questions  # add the 175-question Gujarati bank
+php console.php seed --questions  # add the 200-question Gujarati bank
 php console.php backup:database   # create a database backup
 php console.php cache:clear       # clear application cache
 php console.php update:check      # ask GitHub about a newer version
