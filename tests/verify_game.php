@@ -115,13 +115,35 @@ $suite->check('50:50 keeps the correct answer', in_array($correct, $remaining, t
 $result = $api('/api/lifelines/use', ['code' => 'fifty_fifty']);
 $suite->check('a lifeline cannot be used twice', ($result['success'] ?? true) === false, (string) ($result['message'] ?? ''));
 
+// The poll ships in "announce" mode for a live hall, where the audience
+// answers for itself. The simulated poll is still available, so both are
+// checked here.
+$pollRow = $db->selectOne("SELECT id, config FROM lifelines WHERE code = 'audience_poll' LIMIT 1");
+$pollConfig = json_decode((string) ($pollRow['config'] ?? '{}'), true) ?: [];
+
+$result = $api('/api/lifelines/use', ['code' => 'audience_poll']);
+foreach (($result['data']['lifelines'] ?? []) as $lifeline) { $lifelines[$lifeline['code']] = $lifeline; }
+$pollResult = $lifelines['audience_poll']['result'] ?? [];
+$suite->equals('audience poll announces itself by default', (string) ($pollResult['mode'] ?? ''), 'announce');
+$suite->check('and invents no percentages', !isset($pollResult['percentages']), 'the hall answers');
+
+// Switch to the simulated poll and check the numbers it produces.
+$db->update('lifelines', [
+    'config' => json_encode(array_merge($pollConfig, ['mode' => 'realistic']), JSON_UNESCAPED_UNICODE),
+], ['id' => (int) $pollRow['id']]);
+$db->run('DELETE FROM game_lifelines WHERE game_id = ? AND lifeline_code = ?', [$gameId, 'audience_poll']);
+
 $result = $api('/api/lifelines/use', ['code' => 'audience_poll']);
 foreach (($result['data']['lifelines'] ?? []) as $lifeline) { $lifelines[$lifeline['code']] = $lifeline; }
 $percentages = $lifelines['audience_poll']['result']['percentages'] ?? [];
-$suite->equals('audience poll totals 100%', array_sum($percentages), 100);
+$suite->equals('a simulated poll totals 100%', array_sum($percentages), 100);
 $removedShare = 0;
 foreach ($removed as $key) { $removedShare += (int) ($percentages[$key] ?? 0); }
 $suite->equals('poll gives 0% to options 50:50 removed', $removedShare, 0);
+
+$db->update('lifelines', [
+    'config' => json_encode($pollConfig, JSON_UNESCAPED_UNICODE),
+], ['id' => (int) $pollRow['id']]);
 
 $result = $api('/api/lifelines/use', ['code' => 'expert_advice']);
 foreach (($result['data']['lifelines'] ?? []) as $lifeline) { $lifelines[$lifeline['code']] = $lifeline; }

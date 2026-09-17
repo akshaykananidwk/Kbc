@@ -89,6 +89,8 @@ final class CategoryController extends Controller
             'description' => $data['description'] ?? null,
             'colour'      => $data['colour'] ?? '#d97706',
             'status'      => $data['status'],
+            // Whether a balanced game deals questions from this category.
+            'in_rotation' => $request->bool('in_rotation', false) ? 1 : 0,
             'sort_order'  => (int) ($data['sort_order'] ?? 0),
         ];
     }

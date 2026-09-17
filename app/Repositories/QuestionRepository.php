@@ -195,6 +195,12 @@ final class QuestionRepository extends Repository
         $rotate = $allowReuseAcrossGames && SettingsService::bool('question_rotation', true);
         $rotation = $rotate ? 'q.times_served ASC, q.last_served_at IS NULL DESC, q.last_served_at ASC, ' : '';
 
+        // Preferred: a question explicitly pinned to this level. In balanced
+        // mode the category decides, so a pin only applies within it.
+        if ($mode === 'balanced' && $categoryId !== null && $categoryId > 0) {
+            $where[] = 'q.category_id = :pinnedcat';
+            $bindings['pinnedcat'] = $categoryId;
+        }
         // Preferred: a question explicitly pinned to this level.
         $pinned = $this->db->selectOne(
             'SELECT q.* FROM questions q WHERE ' . implode(' AND ', $where)
@@ -212,7 +218,7 @@ final class QuestionRepository extends Repository
         $modeWhere[] = '(q.prize_level IS NULL OR q.prize_level = :level2)';
         $modeBindings['level2'] = $levelNo;
 
-        if ($mode === 'category' && $categoryId !== null && $categoryId > 0) {
+        if (in_array($mode, ['category', 'balanced'], true) && $categoryId !== null && $categoryId > 0) {
             $modeWhere[] = 'q.category_id = :cat';
             $modeBindings['cat'] = $categoryId;
         }

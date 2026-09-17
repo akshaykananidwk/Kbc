@@ -109,7 +109,7 @@ final class GameService
         }
 
         $order = $questionOrder ?? SettingsService::string('question_order', 'fixed');
-        if (!in_array($order, ['fixed', 'random', 'category', 'difficulty'], true)) {
+        if (!in_array($order, ['balanced', 'fixed', 'random', 'category', 'difficulty'], true)) {
             $order = 'fixed';
         }
 
@@ -140,6 +140,42 @@ final class GameService
         );
 
         return $this->state($gameId, true);
+    }
+
+    /**
+     * Which category this level should draw from in a balanced game.
+     *
+     * The categories are dealt out in a cycle, so a ten-level ladder over
+     * five categories asks two questions from each. The order of the cycle
+     * is shuffled per game - deterministically, so re-serving the same level
+     * always lands on the same category - which keeps every show different
+     * without making the running order unpredictable mid-game.
+     */
+    private function categoryForLevel(int $gameId, int $levelNo): ?int
+    {
+        $categories = $this->db->select(
+            "SELECT DISTINCT c.id
+             FROM question_categories c
+             INNER JOIN questions q ON q.category_id = c.id AND q.status = 'active'
+             WHERE c.status = 'active' AND c.in_rotation = 1
+             ORDER BY c.sort_order ASC, c.id ASC"
+        );
+        if ($categories === []) {
+            return null;
+        }
+
+        $ids = array_map(static fn (array $row): int => (int) $row['id'], $categories);
+
+        // A stable shuffle: order the categories by a hash of the game and the
+        // category, so the sequence differs per game but never changes within
+        // one. (shuffle() would give a different answer on every call.)
+        usort($ids, static function (int $a, int $b) use ($gameId): int {
+            $ha = md5($gameId . ':' . $a);
+            $hb = md5($gameId . ':' . $b);
+            return $ha <=> $hb;
+        });
+
+        return $ids[($levelNo - 1) % count($ids)];
     }
 
     /** Moves from the participant introduction to the first question. */
@@ -193,14 +229,36 @@ final class GameService
                 ? (int) $game['allow_repeat'] === 1
                 : ((int) ($game['is_rehearsal'] ?? 0) === 1 || SettingsService::bool('repeat_questions', false));
 
+            $order = (string) $game['question_order'];
+            $categoryId = $level['category_id'] === null ? null : (int) $level['category_id'];
+
+            // Balanced order spreads the show evenly over the categories:
+            // with five categories and a ten-level ladder that is two
+            // questions from each, in a different order every game.
+            if ($order === 'balanced' && $categoryId === null) {
+                $categoryId = $this->categoryForLevel($gameId, $levelNo);
+            }
+
             $question = $this->questions->pickForLevel(
                 $levelNo,
-                (string) $game['question_order'],
-                $level['category_id'] === null ? null : (int) $level['category_id'],
+                $order,
+                $categoryId,
                 (string) $level['difficulty'],
                 $this->games->servedQuestionIds($gameId),
                 $allowReuse
             );
+
+            // A category that has run dry must never stop the show.
+            if ($question === null && $order === 'balanced') {
+                $question = $this->questions->pickForLevel(
+                    $levelNo,
+                    'random',
+                    $level['category_id'] === null ? null : (int) $level['category_id'],
+                    (string) $level['difficulty'],
+                    $this->games->servedQuestionIds($gameId),
+                    $allowReuse
+                );
+            }
 
             if ($question === null) {
                 throw new HttpException(
@@ -888,11 +946,12 @@ final class GameService
         $config['_removed'] = $this->removedOptions($gameId, $questionId);
 
         $payload = match ($code) {
-            'fifty_fifty'   => $this->buildFiftyFifty($question, $config),
-            'audience_poll' => $this->buildAudiencePoll($question, $config, $gameId),
-            'expert_advice' => $this->buildExpertAdvice($question, $config),
-            'skip_question' => ['skipped' => true],
-            default         => [],
+            'fifty_fifty'    => $this->buildFiftyFifty($question, $config),
+            'audience_poll'  => $this->buildAudiencePoll($question, $config, $gameId),
+            'expert_advice'  => $this->buildExpertAdvice($question, $config),
+            'phone_a_friend' => $this->buildPhoneAFriend($config),
+            'skip_question'  => ['skipped' => true],
+            default          => [],
         };
 
         $this->db->insert('game_lifelines', [
@@ -961,12 +1020,30 @@ final class GameService
      * @param array<string,mixed> $config
      * @return array<string,mixed>
      */
+    /**
+     * Phone a Friend is purely a stage cue: the friend answers on the phone,
+     * so the screen only shows that the lifeline is in play and how long is
+     * left. Nothing about the question is revealed.
+     */
+    private function buildPhoneAFriend(array $config): array
+    {
+        $seconds = max(10, min(180, (int) ($config['seconds'] ?? 30)));
+
+        return [
+            'mode'       => 'announce',
+            'seconds'    => $seconds,
+            'message'    => (string) ($config['message'] ?? ''),
+            'started_at' => date('Y-m-d H:i:s'),
+        ];
+    }
+
     private function buildAudiencePoll(array $question, array $config, int $gameId = 0): array
     {
         $mode = (string) ($config['mode'] ?? 'realistic');
         $correct = (string) $question['correct_option'];
 
         $removed = is_array($config['_removed'] ?? null) ? $config['_removed'] : [];
+
 
         // Real votes from the audience always beat a simulated poll.
         if ($gameId > 0 && SettingsService::bool('audience_poll_live', true)) {
@@ -979,7 +1056,17 @@ final class GameService
                     return $live;
                 }
             }
-            // Fall through to the simulated poll if nobody voted.
+            // Fall through if nobody voted.
+        }
+
+        // With a hall full of people, the audience answers for itself: the
+        // screen only announces that the lifeline is in play. No invented
+        // percentages, which would be worse than none.
+        if ($mode === 'announce') {
+            return [
+                'mode'    => 'announce',
+                'seconds' => max(10, min(180, (int) ($config['announce_seconds'] ?? 30))),
+            ];
         }
 
         if ($mode === 'manual') {

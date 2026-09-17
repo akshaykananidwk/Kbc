@@ -21,7 +21,7 @@ foreach (App\Core\Lang::available() as $available) {
 }
 
 $selectOptions = [
-    'question_order'     => ['fixed' => 'Fixed order', 'random' => 'Random', 'category' => 'By level category', 'difficulty' => 'By level difficulty'],
+    'question_order'     => ['balanced' => 'Two from every category (balanced)', 'fixed' => 'Fixed order', 'random' => 'Random', 'category' => 'By level category', 'difficulty' => 'By level difficulty'],
     'timer_style'        => ['ring' => 'Ring', 'bar' => 'Bar', 'digits' => 'Digits only'],
     'language'           => $languageNames,
     'interface_language' => $interfaceOptions,

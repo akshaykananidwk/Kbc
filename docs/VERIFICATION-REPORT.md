@@ -1,7 +1,7 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.4.0
+**Version:** 1.5.0
 **Date:** 13 September 2026
 
 ## Test environment
@@ -26,7 +26,7 @@ development tool only — the application itself still has no Node dependency.
 
 ## Result
 
-**357 checks executed, 357 passed, 0 failed**, plus **39 browser checks, all passed**.
+**394 checks executed, 394 passed, 0 failed**, plus **39 browser checks, all passed**.
 
 Per-check output is in [`verification-results.md`](verification-results.md).
 
@@ -151,6 +151,15 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Uploads | Admin guidance | Settings states the limit in force before anything is uploaded | PASS |
 | New game | Open game left behind | Refusal names the blocking game and its participant; one confirmation ends it and creates the new game | PASS |
 | New game | Audit | The automatic takeover is recorded as `game.replaced`; the old game is closed, never deleted | PASS |
+| Question bank | Content | 175 Gujarati questions, 35 in each of five categories; every row complete, unique and with an explanation | PASS |
+| Question bank | Loading | Seeded into the database and folded into the five categories a balanced show uses | PASS |
+| Question bank | Slugs | A Gujarati category name keeps the same slug, so re-saving never creates a duplicate category | PASS |
+| Balanced order | Spread | Every game asks exactly two questions from each of the five categories | PASS |
+| Balanced order | Variety | The order of the categories differs from show to show, but never changes inside one game | PASS |
+| Lifelines | Audience Poll | Announces itself with a countdown and invents no percentages — the hall answers | PASS |
+| Lifelines | Phone a Friend | Available, announces itself, counts down the call | PASS |
+| Categories | Rotation control | The admin panel takes a category in or out of the balanced rotation, and the change takes effect | PASS |
+| Lifelines | Secrecy | Neither announcement puts the answer on the display | PASS |
 | Reveal | Wrong answer | The chosen option turns red and the correct one green on the board, measured in a real browser | PASS |
 | Reveal | Naming the answer | The panel that follows names both answers in words, with the explanation | PASS |
 | Reveal | Steadiness | Selecting, locking and revealing leave the screen at exactly the same scale | PASS |
@@ -174,7 +183,7 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 
 ## What was verified how
 
-**Automated** (`tests/verify.php`, 357 assertions; `tests/layout.js`, 39 browser assertions): everything in the table above
+**Automated** (`tests/verify.php`, 394 assertions; `tests/layout.js`, 39 browser assertions): everything in the table above
 except where noted below. The suite drives the real HTTP application with real
 cookies and CSRF tokens, and asserts against the live database.
 
@@ -216,40 +225,47 @@ throwaway branch carrying a deliberately broken migration.
 
 ## Known behaviour worth knowing before your event
 
-1. **Rotation decides what comes next when reuse is on.** The least recently
+1. **Current affairs go stale.** The 35 questions in કરંટ અફેર્સ are written from
+   settled events. Read through that category before each season and refresh it —
+   Admin → Questions, or edit `docs/gujarati-question-bank.csv` and import it.
+2. **Balanced order needs the categories to be in rotation.** Admin → Categories
+   decides which take part; the five that ship are in, the old sample ones are
+   out. With five categories and ten levels that is two questions each; with a
+   different count the ladder is simply dealt out in the same cycle.
+3. **Rotation decides what comes next when reuse is on.** The least recently
    used questions are served first (Settings → Game → *Rotate through the
    question bank*), so a bank of 200 is fully used before anything returns.
    Questions pinned to a prize level are an exception by design: a pinned
    question is always served at its level, and rotation only chooses between
    several pinned to the same one.
-2. **Questions do not repeat across games by default.** With
+4. **Questions do not repeat across games by default.** With
    `repeat_questions` off, a question used in any past game is never served
    again, so a 10-level ladder needs 10 fresh questions per show. The dashboard
    and the operator setup screen show how many *unused* questions remain.
    When they run low the setup screen now offers **Reuse questions if needed**
    for that one game, so a show is never blocked; turn the setting on in
    **Settings → Game** to make reuse the default.
-3. **MySQL cannot roll back DDL.** If a future migration fails halfway, the
+5. **MySQL cannot roll back DDL.** If a future migration fails halfway, the
    runner calls that migration's own `down()` to clean up. Migrations should
    therefore always implement `down()` properly.
-4. **Music needs the server to allow it.** PHP's stock limit is 2 MB, which is
+6. **Music needs the server to allow it.** PHP's stock limit is 2 MB, which is
    smaller than most songs. **Admin → Settings → Sound** shows the limit in
    force and, when it is low, offers to write a `.user.ini` asking for 64M
    (PHP-FPM and CGI hosting read that file; `.htaccess` covers mod_php). Where
    the host will not let PHP write it, the same panel shows the text to upload
    by hand. That file is deliberately not part of the update package: a host
    that blocks it would otherwise block every update.
-5. **Live audience voting needs everyone on the same network.** The QR code
+7. **Live audience voting needs everyone on the same network.** The QR code
    contains the address the browser is using, so the phones must be able to
    reach that address. On a venue Wi-Fi set `app_url` in **Settings → General**
    to the machine's LAN address before printing or showing the code.
-6. **Rehearsal games are kept, not discarded.** They are simply excluded from
+8. **Rehearsal games are kept, not discarded.** They are simply excluded from
    history, statistics, the hall of fame and certificates. Filter for them in
    **Admin → Reports → Games** if you want to review a practice run.
-7. **After an update, reload the display once.** It now does this for itself —
+9. **After an update, reload the display once.** It now does this for itself —
    the screen notices the new build within a few seconds and reloads when no
    clock is running — but a manual reload is instant. Asset addresses change
    with every update, so no browser can serve a stale stylesheet any more.
-8. **The updater needs `curl` and `zip`.** Without them the rest of the
+10. **The updater needs `curl` and `zip`.** Without them the rest of the
    application works normally; only the update manager is unavailable, and the
    Updates page says so.

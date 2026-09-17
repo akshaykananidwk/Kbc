@@ -56,6 +56,7 @@ final class OperatorController extends Controller
             'rotation'      => SettingsService::bool('question_rotation', true),
             'maxLevel'      => $levels->maxLevel(),
             'orderModes'    => [
+                'balanced'   => 'Two questions from every category (balanced)',
                 'fixed'      => 'Fixed order (by prize level, then sort order)',
                 'random'     => 'Random questions',
                 'category'   => 'By category set on each prize level',

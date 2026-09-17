@@ -427,6 +427,13 @@ legend { font-weight: 700; font-size: .85rem; padding: 0 .45rem; color: var(--in
   border-radius: .6rem; padding: .7rem .9rem;
   font-size: .86rem; line-height: 1.5; color: var(--ink-700, inherit);
 }
+/* A compact checkbox that sits in a row of inline controls. */
+.check--inline {
+  display: inline-flex; align-items: center; gap: .3rem; margin: 0;
+  font-size: .78rem; white-space: nowrap;
+}
+.check--inline span { font-weight: 600; }
+
 .hint details summary { cursor: pointer; font-weight: 700; }
 .code-block {
   background: #17110d; color: #ffe9c9; border-radius: .5rem;

@@ -768,7 +768,9 @@
 
   /* --- Overlays ------------------------------------------------------------ */
   function hideOverlays() {
-    ['dResultOverlay', 'dPollOverlay', 'dExpertOverlay', 'dFinalOverlay', 'dChequeOverlay', 'dFffOverlay'].forEach(function (id) {
+    if (announceTimer) { window.clearInterval(announceTimer); announceTimer = null; }
+    ['dResultOverlay', 'dPollOverlay', 'dExpertOverlay', 'dAnnounceOverlay',
+     'dFinalOverlay', 'dChequeOverlay', 'dFffOverlay'].forEach(function (id) {
       var node = el(id);
       if (node) node.hidden = true;
     });
@@ -993,7 +995,59 @@
     if (won > 0) confetti(120);
   }
 
+  /**
+   * Announcement panel for a lifeline the room answers itself: the audience
+   * in the hall, or a friend on the phone. It shows that the lifeline is in
+   * play and how long is left - never an invented answer.
+   */
+  var announceTimer = null;
+
+  function showAnnouncement(lifeline) {
+    hideOverlays();
+    var overlay = el('dAnnounceOverlay');
+    if (!overlay) return;
+
+    var isPhone = lifeline.code === 'phone_a_friend';
+    var seconds = Math.max(5, parseInt((lifeline.result && lifeline.result.seconds) || 30, 10));
+
+    setText('dAnnounceIcon', isPhone ? '📞' : '👥');
+    setText('dAnnounceTitle', isPhone ? 'ફોન અ ફ્રેન્ડ' : 'ઓડિયન્સ પોલ');
+    setText('dAnnounceMessage', (lifeline.result && lifeline.result.message)
+      ? lifeline.result.message
+      : (isPhone ? 'મિત્રને ફોન કરો · Phone a Friend' : 'પ્રેક્ષકો જવાબ આપશે · Ask the audience'));
+
+    var clock = el('dAnnounceClock');
+    var fill = el('dAnnounceFill');
+    if (clock) clock.hidden = false;
+
+    var left = seconds;
+    setText('dAnnounceSeconds', left);
+    if (fill) fill.style.width = '100%';
+
+    if (announceTimer) { window.clearInterval(announceTimer); }
+    announceTimer = window.setInterval(function () {
+      left--;
+      setText('dAnnounceSeconds', Math.max(0, left));
+      if (fill) fill.style.width = Math.max(0, (left / seconds) * 100) + '%';
+      if (left <= 0) {
+        window.clearInterval(announceTimer);
+        announceTimer = null;
+        overlay.hidden = true;
+      }
+    }, 1000);
+
+    overlay.hidden = false;
+    forceFit();
+  }
+
   function showLifelineOverlay(lifeline) {
+    // A poll the hall answers itself, or a phone call: announce it only.
+    if (lifeline.code === 'phone_a_friend'
+      || (lifeline.code === 'audience_poll' && lifeline.result && lifeline.result.mode === 'announce')) {
+      showAnnouncement(lifeline);
+      return;
+    }
+
     if (lifeline.code === 'audience_poll' && lifeline.result && lifeline.result.percentages) {
       hideOverlays();
       var box = el('dPollBars');

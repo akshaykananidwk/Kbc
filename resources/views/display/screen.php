@@ -238,6 +238,17 @@ $config = [
   <div class="d-poll" id="dPollBars"></div>
 </div>
 
+<!-- Lifeline announcement: the hall answers, the screen only says so -->
+<div class="d-overlay d-overlay--announce" id="dAnnounceOverlay" hidden>
+  <div class="d-announce__icon" id="dAnnounceIcon">👥</div>
+  <div class="d-overlay__title" id="dAnnounceTitle"></div>
+  <div class="d-overlay__sub" id="dAnnounceMessage"></div>
+  <div class="d-announce__clock" id="dAnnounceClock" hidden>
+    <div class="d-announce__seconds" id="dAnnounceSeconds">30</div>
+    <div class="d-announce__bar"><div class="d-announce__fill" id="dAnnounceFill"></div></div>
+  </div>
+</div>
+
 <!-- Expert overlay -->
 <div class="d-overlay" id="dExpertOverlay" hidden>
   <div class="d-overlay__title" style="font-size:5vmin">Expert Advice</div>

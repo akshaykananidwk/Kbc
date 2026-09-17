@@ -138,6 +138,30 @@ Review and press **Install now**. The installer:
 
 ---
 
+## 6b. Loading the ready-made question bank
+
+175 Gujarati questions ship with the app, 35 in each of five categories:
+ધાર્મિકતા, દેશભક્તિ, ભારતદર્શન, કરંટ અફેર્સ and જનરલ નોલેજ.
+
+Over SSH:
+
+```bash
+php console.php seed --questions
+```
+
+No SSH? **Admin → Questions → Import**, and upload
+`docs/gujarati-question-bank.csv` from the package. The same file opens in
+Excel if you want to edit, add or translate questions first — keep the column
+headings as they are and save as CSV UTF-8.
+
+Then set **Admin → Settings → Game → Question order** to *Two from every
+category (balanced)*: a ten-level ladder then asks two questions from each of
+the five categories, in a different order every show.
+
+Check the કરંટ અફેર્સ questions before each season — current affairs date.
+
+---
+
 ## 7. Setting up the two monitors
 
 1. Connect the second monitor / projector and set Windows or macOS to

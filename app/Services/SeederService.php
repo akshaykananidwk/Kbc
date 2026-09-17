@@ -8,6 +8,7 @@ use Database\Seeders\CategorySeeder;
 use Database\Seeders\DemoSeeder;
 use Database\Seeders\LifelineSeeder;
 use Database\Seeders\PrizeLevelSeeder;
+use Database\Seeders\QuestionBankSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SettingsSeeder;
 
@@ -34,6 +35,19 @@ final class SeederService
     public function seedDemo(): void
     {
         (new DemoSeeder($this->db))->run();
+    }
+
+    /**
+     * The ready-made Gujarati question bank: 175 questions across five
+     * categories. Existing questions are never touched.
+     */
+    public function seedQuestionBank(): int
+    {
+        $before = (int) ($this->db->scalar('SELECT COUNT(*) FROM questions') ?? 0);
+        (new QuestionBankSeeder($this->db))->run();
+        $after = (int) ($this->db->scalar('SELECT COUNT(*) FROM questions') ?? 0);
+
+        return $after - $before;
     }
 
     /**

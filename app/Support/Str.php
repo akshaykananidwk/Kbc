@@ -7,7 +7,9 @@ final class Str
 {
     public static function slug(string $value, string $separator = '-'): string
     {
-        $value = trim($value);
+        $original = trim($value);
+        $value = $original;
+
         $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
         if (is_string($ascii) && trim($ascii) !== '') {
             $value = $ascii;
@@ -15,7 +17,17 @@ final class Str
         $value = strtolower($value);
         $value = preg_replace('/[^a-z0-9]+/', $separator, $value) ?? '';
         $value = trim($value, $separator);
-        return $value === '' ? 'item-' . substr(bin2hex(random_bytes(4)), 0, 6) : $value;
+
+        if ($value !== '') {
+            return $value;
+        }
+
+        // Gujarati, Hindi and other non-Latin names have no ASCII form, so the
+        // slug is derived from the text itself. It must be stable: a random
+        // one made every save look like a brand new category.
+        return $original === ''
+            ? 'item'
+            : 'item-' . substr(md5($original), 0, 10);
     }
 
     public static function random(int $length = 32): string

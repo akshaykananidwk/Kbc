@@ -39,6 +39,16 @@ The two screens stay synchronised through a lightweight long-poll against
 - **A clear reveal.** On a wrong answer the chosen option turns red and the real answer
   turns green on the board; a moment later the screen spells both out in words, with the
   explanation. Nothing on screen changes size while an answer is chosen, locked or revealed.
+- **175 Gujarati questions ready to go** in five categories — ધાર્મિકતા, દેશભક્તિ,
+  ભારતદર્શન, કરંટ અફેર્સ and જનરલ નોલેજ — installed with one command and editable as a
+  CSV (`docs/gujarati-question-bank.csv`).
+- **Two questions from every category.** The *balanced* running order deals the show out
+  over the categories in rotation: five categories and a ten-level ladder means two from
+  each, in a different order every game.
+- **Lifelines for a real hall.** The Audience Poll simply announces itself with a
+  countdown — the people in the room answer, so no percentages are invented — and
+  Phone a Friend does the same for the call. Live QR voting is still there when you want
+  real numbers on screen.
 - **Rotation through the question bank.** With 150–200 questions, the least recently used
   are served first, so every question is used before any comes back. The operator screen
   shows how many have never been used and which round the bank is on.
@@ -174,6 +184,7 @@ index.php        front controller      console.php  CLI maintenance
 php console.php migrate           # run pending migrations
 php console.php migrate:status    # what has and has not run
 php console.php seed --demo       # seed defaults (and demo content)
+php console.php seed --questions  # add the 175-question Gujarati bank
 php console.php backup:database   # create a database backup
 php console.php cache:clear       # clear application cache
 php console.php update:check      # ask GitHub about a newer version

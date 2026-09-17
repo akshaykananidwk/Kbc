@@ -1009,3 +1009,212 @@ $db->run("DELETE FROM question_options WHERE question_id IN (SELECT id FROM ques
 $db->run("DELETE FROM questions WHERE question_text LIKE 'VERIFY ROTATION%'");
 $db->run("UPDATE questions SET status = 'active' WHERE status = 'inactive'");
 SettingsService::set('repeat_questions', false);
+
+// ---------------------------------------------------------------------------
+// 34. The ready-made Gujarati question bank
+// ---------------------------------------------------------------------------
+$suite->module('34. Gujarati question bank');
+
+$bankFile = \App\Core\Application::instance()->rootPath('database/seeds/gujarati-question-bank.php');
+$suite->check('the question bank ships with the app', is_file($bankFile));
+
+/** @var array<int,array<int,string>> $bankRows */
+$bankRows = require $bankFile;
+$suite->check('it holds between 150 and 200 questions',
+    count($bankRows) >= 150 && count($bankRows) <= 200, count($bankRows) . ' questions');
+
+$byCategory = [];
+$problems = [];
+$seenText = [];
+foreach ($bankRows as $index => $row) {
+    $line = $index + 1;
+    if (count($row) !== 9) { $problems[] = 'row ' . $line . ': wrong shape'; continue; }
+    [$category, $difficulty, $text, $a, $b, $c, $d, $correct, $explanation] = $row;
+
+    $byCategory[$category] = ($byCategory[$category] ?? 0) + 1;
+    if (!in_array($correct, ['A', 'B', 'C', 'D'], true)) { $problems[] = 'row ' . $line . ': bad answer key'; }
+    if (!in_array($difficulty, ['easy', 'medium', 'hard', 'expert'], true)) { $problems[] = 'row ' . $line . ': bad difficulty'; }
+    if (count(array_unique([$a, $b, $c, $d])) !== 4) { $problems[] = 'row ' . $line . ': repeated option'; }
+    foreach ([$a, $b, $c, $d] as $option) {
+        if (trim((string) $option) === '') { $problems[] = 'row ' . $line . ': empty option'; }
+    }
+    if (trim($explanation) === '') { $problems[] = 'row ' . $line . ': no explanation'; }
+
+    $key = mb_strtolower(preg_replace('/\s+/u', ' ', $text) ?? $text);
+    if (isset($seenText[$key])) { $problems[] = 'row ' . $line . ': duplicate of row ' . $seenText[$key]; }
+    $seenText[$key] = $line;
+}
+$suite->check('every question is complete and unique', $problems === [], implode('; ', array_slice($problems, 0, 3)));
+$suite->equals('it covers five categories', count($byCategory), 5);
+$suite->check('with the same number in each',
+    count(array_unique(array_values($byCategory))) === 1,
+    implode(', ', array_map(static fn ($k, $v) => $k . '=' . $v, array_keys($byCategory), $byCategory)));
+$suite->check('the questions are in Gujarati',
+    (bool) preg_match('/[\x{0A80}-\x{0AFF}]/u', (string) $bankRows[0][2]), mb_substr((string) $bankRows[0][2], 0, 34));
+
+foreach (array_keys($byCategory) as $categoryName) {
+    $id = (int) ($db->scalar('SELECT id FROM question_categories WHERE name = ? LIMIT 1', [$categoryName]) ?? 0);
+    $live = (int) ($db->scalar("SELECT COUNT(*) FROM questions WHERE category_id = ? AND status = 'active'", [$id]) ?? 0);
+    $suite->check('loaded into the database: ' . $categoryName, $live >= 35, $live . ' active question(s)');
+}
+
+$suite->check('the five categories are the ones a balanced show rotates through',
+    (int) $db->scalar("SELECT COUNT(*) FROM question_categories WHERE status = 'active' AND in_rotation = 1") === 5,
+    $db->scalar("SELECT COUNT(*) FROM question_categories WHERE status = 'active' AND in_rotation = 1") . ' in rotation');
+
+// A Gujarati category name must keep the same slug every time it is saved.
+$slugOne = \App\Support\Str::slug('ધાર્મિકતા');
+$slugTwo = \App\Support\Str::slug('ધાર્મિકતા');
+$suite->equals('a Gujarati name gives a stable slug', $slugOne, $slugTwo);
+$suite->check('and different names give different slugs',
+    $slugOne !== \App\Support\Str::slug('દેશભક્તિ'), $slugOne);
+$suite->check('re-seeding does not duplicate a category',
+    (int) $db->scalar("SELECT COUNT(*) FROM question_categories WHERE name = 'ધાર્મિકતા'") === 1);
+
+// ---------------------------------------------------------------------------
+// 35. Two questions from every category
+// ---------------------------------------------------------------------------
+$suite->module('35. Two questions from every category');
+$cleanGames();
+$db->run('UPDATE questions SET times_used = 0, times_served = 0, last_served_at = NULL');
+
+$activeLevels = (int) $db->scalar("SELECT COUNT(*) FROM prize_levels WHERE status = 'active'");
+$rotationCategories = (int) $db->scalar("SELECT COUNT(*) FROM question_categories WHERE status = 'active' AND in_rotation = 1");
+$perCategory = $rotationCategories > 0 ? intdiv($activeLevels, $rotationCategories) : 0;
+
+$sequences = [];
+for ($game = 0; $game < 2; $game++) {
+    $state = $engine->createGame($participantId, null, 'balanced', true, true, true);
+    $id = (int) $state['game_id'];
+    $engine->startGame($id);
+
+    $order = [];
+    for ($level = 1; $level <= $activeLevels; $level++) {
+        $current = $engine->state($id, true);
+        if ($current['is_finished'] || ($current['question'] ?? null) === null) { break; }
+        $order[] = (string) ($db->scalar(
+            'SELECT c.name FROM game_questions gq
+             JOIN questions q ON q.id = gq.question_id
+             LEFT JOIN question_categories c ON c.id = q.category_id
+             WHERE gq.game_id = ? AND gq.level_no = ?', [$id, $level]) ?? '');
+        $engine->startTimer($id);
+        $engine->selectOption($id, (string) $current['private']['correct_option']);
+        $engine->lockAnswer($id);
+        $engine->revealResult($id);
+        if ($level < $activeLevels) { $engine->nextQuestion($id); }
+    }
+    $engine->endGame($id, 'completed');
+    $sequences[] = $order;
+
+    $counts = array_count_values($order);
+    $suite->equals('game ' . ($game + 1) . ': every category is used', count($counts), $rotationCategories);
+    $suite->check('game ' . ($game + 1) . ': ' . $perCategory . ' question(s) from each',
+        count(array_unique(array_values($counts))) === 1 && (int) reset($counts) === $perCategory,
+        implode(', ', array_map(static fn ($k, $v) => mb_substr($k, 0, 8) . '=' . $v, array_keys($counts), $counts)));
+}
+
+$suite->check('and the running order differs from show to show',
+    $sequences[0] !== $sequences[1],
+    mb_substr(implode('→', array_map(static fn ($c) => mb_substr($c, 0, 4), $sequences[0])), 0, 40));
+
+// The same level, served again, must land on the same category.
+$state = $engine->createGame($participantId, null, 'balanced', true, true, true);
+$repeatId = (int) $state['game_id'];
+$engine->startGame($repeatId);
+$firstCategory = (string) $db->scalar(
+    'SELECT c.name FROM game_questions gq JOIN questions q ON q.id = gq.question_id
+     LEFT JOIN question_categories c ON c.id = q.category_id WHERE gq.game_id = ? AND gq.level_no = 1', [$repeatId]);
+$engine->resetGame($repeatId);
+$engine->startGame($repeatId);
+$againCategory = (string) $db->scalar(
+    'SELECT c.name FROM game_questions gq JOIN questions q ON q.id = gq.question_id
+     LEFT JOIN question_categories c ON c.id = q.category_id WHERE gq.game_id = ? AND gq.level_no = 1', [$repeatId]);
+$suite->equals('a level keeps its category if the game is restarted', $againCategory, $firstCategory);
+$engine->endGame($repeatId, 'abandoned');
+
+$http->get('/operator/setup');
+$suite->check('the operator can choose the balanced order',
+    str_contains($http->body, 'Two questions from every category'));
+$cleanGames();
+
+// ---------------------------------------------------------------------------
+// 36. Lifelines the room answers itself
+// ---------------------------------------------------------------------------
+$suite->module('36. Lifelines the room answers itself');
+$cleanGames();
+SettingsService::set('repeat_questions', true);
+
+$state = $engine->createGame($participantId, null, null, false, true, true);
+$gameId = (int) $state['game_id'];
+$engine->startGame($gameId);
+$engine->startTimer($gameId);
+
+$state = $engine->useLifeline($gameId, 'audience_poll');
+$lifelines = [];
+foreach ($state['lifelines'] as $lifeline) { $lifelines[$lifeline['code']] = $lifeline; }
+$poll = $lifelines['audience_poll']['result'] ?? [];
+$suite->equals('the audience poll only announces itself', (string) ($poll['mode'] ?? ''), 'announce');
+$suite->check('it invents no percentages', !isset($poll['percentages']),
+    'the hall answers, the screen does not guess');
+$suite->check('and it shows how long the audience has',
+    (int) ($poll['seconds'] ?? 0) > 0, ($poll['seconds'] ?? 0) . ' seconds');
+
+$state = $engine->useLifeline($gameId, 'phone_a_friend');
+foreach ($state['lifelines'] as $lifeline) { $lifelines[$lifeline['code']] = $lifeline; }
+$phone = $lifelines['phone_a_friend']['result'] ?? [];
+$suite->check('Phone a Friend is available', isset($lifelines['phone_a_friend']));
+$suite->equals('it is an announcement too', (string) ($phone['mode'] ?? ''), 'announce');
+$suite->check('with a countdown for the call', (int) ($phone['seconds'] ?? 0) > 0, ($phone['seconds'] ?? 0) . ' seconds');
+
+$display = json_decode((string) file_get_contents($baseUrl . '/api/display/snapshot'), true)['data'] ?? [];
+$raw = json_encode($display, JSON_UNESCAPED_UNICODE) ?: '';
+$suite->check('neither lifeline leaks the answer to the display',
+    $display['answer']['correct'] === null && !str_contains($raw, 'correct_option'),
+    'still hidden');
+
+$screen = (string) file_get_contents(\App\Core\Application::instance()->rootPath('resources/views/display/screen.php'));
+$displayJs = (string) file_get_contents(\App\Core\Application::publicPath('assets/js/display.js'));
+$suite->check('the display has a panel for an announced lifeline',
+    str_contains($screen, 'dAnnounceOverlay') && str_contains($displayJs, 'function showAnnouncement'));
+$suite->check('it counts down on screen', str_contains($displayJs, "setText('dAnnounceSeconds'"));
+
+$engine->endGame($gameId, 'abandoned');
+$cleanGames();
+SettingsService::set('repeat_questions', false);
+
+// Categories can be taken in and out of the rotation from the admin panel.
+$suite->module('37. Choosing which categories take part');
+$http->get('/admin/categories');
+$suite->equals('the categories screen renders', $http->status, 200);
+$suite->check('it shows which categories are in rotation',
+    str_contains($http->body, 'in rotation') && str_contains($http->body, 'name="in_rotation"'));
+
+$sample = $db->selectOne("SELECT id, name, in_rotation FROM question_categories WHERE in_rotation = 1 ORDER BY id LIMIT 1");
+if ($sample !== null) {
+    $categoryId = (int) $sample['id'];
+    $http->get('/admin/categories');
+    $http->post('/admin/categories/' . $categoryId, [
+        '_token' => $http->token(),
+        'name'   => (string) $sample['name'],
+        'colour' => '#b3141a',
+        'status' => 'active',
+        // in_rotation deliberately absent: an unticked checkbox sends nothing.
+    ]);
+    $suite->equals('unticking the box takes a category out of the rotation',
+        (int) $db->scalar('SELECT in_rotation FROM question_categories WHERE id = ?', [$categoryId]), 0);
+
+    $http->get('/admin/categories');
+    $http->post('/admin/categories/' . $categoryId, [
+        '_token'      => $http->token(),
+        'name'        => (string) $sample['name'],
+        'colour'      => '#b3141a',
+        'status'      => 'active',
+        'in_rotation' => '1',
+    ]);
+    $suite->equals('and ticking it puts the category back',
+        (int) $db->scalar('SELECT in_rotation FROM question_categories WHERE id = ?', [$categoryId]), 1);
+
+    $suite->check('renaming a Gujarati category keeps its questions',
+        (int) $db->scalar('SELECT COUNT(*) FROM questions WHERE category_id = ?', [$categoryId]) > 0,
+        $db->scalar('SELECT COUNT(*) FROM questions WHERE category_id = ?', [$categoryId]) . ' question(s) still attached');
+}

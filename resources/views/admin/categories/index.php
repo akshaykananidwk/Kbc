@@ -32,6 +32,13 @@ $view->start('content');
           </div>
         </div>
         <input type="hidden" name="status" value="active">
+        <label class="check mb-2">
+          <input type="checkbox" name="in_rotation" value="1" checked>
+          <span>Use in balanced games
+            <small>A balanced show deals its questions out over the categories in
+            rotation — five categories and a ten-level ladder means two from each.</small>
+          </span>
+        </label>
       </div>
       <div class="card__foot"><button type="submit" class="btn btn--primary">Add category</button></div>
     </form>
@@ -45,7 +52,7 @@ $view->start('content');
       <?php else: ?>
       <div class="table-wrap">
         <table class="data">
-          <thead><tr><th>Name</th><th class="num">Questions</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th class="num">Questions</th><th>Status</th><th>In rotation</th><th></th></tr></thead>
           <tbody>
           <?php foreach ($categories as $category): ?>
             <tr>
@@ -56,6 +63,10 @@ $view->start('content');
                   <input type="text" name="name" value="<?= e($category['name']) ?>" required style="flex:1;min-width:120px">
                   <input type="hidden" name="description" value="<?= e($category['description'] ?? '') ?>">
                   <input type="hidden" name="sort_order" value="<?= (int) $category['sort_order'] ?>">
+                  <label class="check check--inline" title="Deal questions from this category in a balanced game">
+                    <input type="checkbox" name="in_rotation" value="1" <?= (int) ($category['in_rotation'] ?? 1) === 1 ? 'checked' : '' ?>>
+                    <span>rotation</span>
+                  </label>
                   <select name="status" style="width:auto;min-width:96px">
                     <option value="active" <?= $category['status'] === 'active' ? 'selected' : '' ?>>Active</option>
                     <option value="inactive" <?= $category['status'] === 'inactive' ? 'selected' : '' ?>>Inactive</option>
@@ -65,6 +76,13 @@ $view->start('content');
               </td>
               <td class="num"><?= (int) $category['question_count'] ?></td>
               <td><span class="badge badge--<?= e(status_badge((string) $category['status'])) ?>"><?= e($category['status']) ?></span></td>
+              <td>
+                <?php if ((int) ($category['in_rotation'] ?? 1) === 1): ?>
+                  <span class="badge badge--ok">↻ in rotation</span>
+                <?php else: ?>
+                  <span class="badge">—</span>
+                <?php endif; ?>
+              </td>
               <td class="actions">
                 <form method="post" action="<?= e(url('/admin/categories/' . (int) $category['id'] . '/delete')) ?>"
                       data-confirm="Delete this category? Its questions will become uncategorised but will not be deleted.">

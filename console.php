@@ -6,7 +6,9 @@ declare(strict_types=1);
  *
  *   php console.php migrate            Run pending migrations
  *   php console.php migrate:status     Show applied / pending migrations
- *   php console.php seed [--demo]      Run the seeders
+ *   php console.php seed [--demo] [--questions]
+ *                                      Run the seeders (--questions adds the
+ *                                      175-question Gujarati bank)
  *   php console.php backup:database    Create a database backup
  *   php console.php cache:clear        Clear the application cache
  *   php console.php update:check       Check GitHub for a newer version
@@ -65,6 +67,10 @@ try {
             if (in_array('--demo', $flags, true)) {
                 $seeder->seedDemo();
                 echo 'Demo data seeded.' . PHP_EOL;
+            }
+            if (in_array('--questions', $flags, true)) {
+                $added = $seeder->seedQuestionBank();
+                echo $added . ' question(s) added from the Gujarati question bank.' . PHP_EOL;
             }
             break;
 
