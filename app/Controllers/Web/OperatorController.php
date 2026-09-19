@@ -46,13 +46,20 @@ final class OperatorController extends Controller
         $games = new GameRepository();
 
         return $this->view('operator.setup', [
-            'participants'  => (new ParticipantRepository())->selectable(),
+            'participants'  => $this->withAgeGroups((new ParticipantRepository())->selectable()),
             'ladder'        => $levels->ladder(),
             'activeGame'    => $games->activeGame(),
             'questionCount' => $questions->availableCount(SettingsService::bool('repeat_questions', false)),
             'totalActive'   => $questions->activeCount(),
             'allowReuse'    => SettingsService::bool('repeat_questions', false),
             'bank'          => $questions->bankStatus(),
+            'noRepeatToday' => SettingsService::bool('no_repeat_today', true),
+            'todayLeft'     => [
+                'junior' => $questions->availableToday('junior'),
+                'senior' => $questions->availableToday('senior'),
+                'any'    => $questions->availableToday(''),
+            ],
+            'juniorMaxAge'  => SettingsService::int('junior_max_age', 20),
             'rotation'      => SettingsService::bool('question_rotation', true),
             'maxLevel'      => $levels->maxLevel(),
             'orderModes'    => [
@@ -97,4 +104,43 @@ final class OperatorController extends Controller
             'gifts'     => $games->giftsWon($gameId),
         ]);
     }
+    /**
+     * The show-day switch: one button that guarantees no question is asked
+     * twice today. Deliberately a single control - during a live show there
+     * is no time to hunt through settings.
+     */
+    public function noRepeatToday(Request $request): Response
+    {
+        $enabled = $request->bool('enabled', true);
+        SettingsService::set('no_repeat_today', $enabled);
+
+        \App\Services\AuditService::log(
+            'settings.no_repeat_today',
+            $enabled ? 'Turned on "no repeats today".' : 'Turned off "no repeats today".',
+            'settings'
+        );
+
+        $this->success($enabled
+            ? 'આજે કોઈ પ્રશ્ન ફરી નહીં પુછાય.'
+            : 'આજે પ્રશ્ન ફરી પુછાઈ શકે છે.');
+
+        return $this->redirect('/operator/setup');
+    }
+
+    /**
+     * Tags each participant with the group they play in, so the operator can
+     * see at a glance whether the next contestant is a junior or a senior.
+     *
+     * @param array<int,array<string,mixed>> $participants
+     * @return array<int,array<string,mixed>>
+     */
+    private function withAgeGroups(array $participants): array
+    {
+        $engine = GameService::make();
+        foreach ($participants as $index => $participant) {
+            $participants[$index]['age_group'] = $engine->ageGroupFor((int) $participant['id']);
+        }
+        return $participants;
+    }
+
 }

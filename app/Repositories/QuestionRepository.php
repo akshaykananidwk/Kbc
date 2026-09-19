@@ -170,10 +170,25 @@ final class QuestionRepository extends Repository
         ?int $categoryId,
         string $difficulty,
         array $excludeIds,
-        bool $allowReuseAcrossGames
+        bool $allowReuseAcrossGames,
+        string $ageGroup = ''
     ): ?array {
         $bindings = [];
         $where = ["q.status = 'active'"];
+
+        // One switch for a show day: whatever else is configured, a question
+        // that has already been asked today is not asked again.
+        if (SettingsService::bool('no_repeat_today', true)) {
+            $where[] = '(q.last_served_at IS NULL OR q.last_served_at < :today)';
+            $bindings['today'] = date('Y-m-d 00:00:00');
+        }
+
+        // Juniors are asked junior and open questions, seniors senior and
+        // open ones - so the same show can run for both age groups.
+        if ($ageGroup !== '' && SettingsService::bool('age_group_questions', true)) {
+            $where[] = "q.age_group IN ('any', :agegroup)";
+            $bindings['agegroup'] = $ageGroup;
+        }
 
         if ($excludeIds !== []) {
             $placeholders = [];
@@ -227,9 +242,18 @@ final class QuestionRepository extends Repository
             $modeBindings['diff'] = $difficulty;
         }
 
+        // Within a group, juniors meet the easier questions first and seniors
+        // the harder ones - the ladder still ramps, but at the right level.
+        $byAge = '';
+        if ($ageGroup === 'junior') {
+            $byAge = "FIELD(q.difficulty, 'easy', 'medium', 'hard', 'expert') ASC, ";
+        } elseif ($ageGroup === 'senior') {
+            $byAge = "FIELD(q.difficulty, 'medium', 'hard', 'easy', 'expert') ASC, ";
+        }
+
         // Random still means random - but among the questions that have waited
         // longest, not the whole bank, so the same few never keep reappearing.
-        $order = $rotation . ($mode === 'random' ? 'RAND()' : 'q.sort_order ASC, q.id ASC');
+        $order = $rotation . $byAge . ($mode === 'random' ? 'RAND()' : 'q.sort_order ASC, q.id ASC');
 
         $row = $this->db->selectOne(
             'SELECT q.* FROM questions q WHERE ' . implode(' AND ', $modeWhere) . ' ORDER BY ' . $order . ' LIMIT 1',
@@ -295,6 +319,30 @@ final class QuestionRepository extends Repository
             'SELECT id, question_text, difficulty, times_used, times_correct, times_wrong
              FROM questions WHERE times_used > 0 ORDER BY times_used DESC LIMIT ' . max(1, $limit)
         );
+    }
+
+    /**
+     * How many questions can still be asked today, for a given age group.
+     * This is the number the operator needs before starting another show.
+     */
+    public function availableToday(string $ageGroup = ''): int
+    {
+        $where = ["status = 'active'"];
+        $bindings = [];
+
+        if (SettingsService::bool('no_repeat_today', true)) {
+            $where[] = '(last_served_at IS NULL OR last_served_at < :today)';
+            $bindings['today'] = date('Y-m-d 00:00:00');
+        }
+        if ($ageGroup !== '' && SettingsService::bool('age_group_questions', true)) {
+            $where[] = "age_group IN ('any', :agegroup)";
+            $bindings['agegroup'] = $ageGroup;
+        }
+
+        return (int) ($this->db->scalar(
+            'SELECT COUNT(*) FROM questions WHERE ' . implode(' AND ', $where),
+            $bindings
+        ) ?? 0);
     }
 
     /**

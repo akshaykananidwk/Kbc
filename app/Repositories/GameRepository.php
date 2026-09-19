@@ -87,7 +87,14 @@ final class GameRepository extends Repository
     /** @return array<int,int> Question ids already served in this game. */
     public function servedQuestionIds(int $gameId): array
     {
-        $rows = $this->db->select('SELECT question_id FROM game_questions WHERE game_id = ?', [$gameId]);
+        // Includes questions swapped away with the "પ્રશ્ન બદલી" lifeline, so
+        // the swap can never hand back the question it just replaced.
+        $rows = $this->db->select(
+            'SELECT question_id FROM game_questions WHERE game_id = :game
+             UNION
+             SELECT question_id FROM game_switched_questions WHERE game_id = :game',
+            ['game' => $gameId]
+        );
         return array_map(static fn ($r) => (int) $r['question_id'], $rows);
     }
 

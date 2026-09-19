@@ -1008,13 +1008,18 @@
     if (!overlay) return;
 
     var isPhone = lifeline.code === 'phone_a_friend';
-    var seconds = Math.max(5, parseInt((lifeline.result && lifeline.result.seconds) || 30, 10));
+    var isSwitch = lifeline.code === 'skip_question';
+    var seconds = Math.max(3, parseInt((lifeline.result && lifeline.result.seconds) || (isSwitch ? 4 : 30), 10));
 
-    setText('dAnnounceIcon', isPhone ? '📞' : '👥');
-    setText('dAnnounceTitle', isPhone ? 'ફોન અ ફ્રેન્ડ' : 'ઓડિયન્સ પોલ');
+    setText('dAnnounceIcon', isPhone ? '📞' : (isSwitch ? '🔄' : '👥'));
+    setText('dAnnounceTitle', isPhone ? 'ફોન અ ફ્રેન્ડ' : (isSwitch ? 'પ્રશ્ન બદલી' : 'ઓડિયન્સ પોલ'));
     setText('dAnnounceMessage', (lifeline.result && lifeline.result.message)
       ? lifeline.result.message
-      : (isPhone ? 'મિત્રને ફોન કરો · Phone a Friend' : 'પ્રેક્ષકો જવાબ આપશે · Ask the audience'));
+      : (isPhone
+          ? 'મિત્રને ફોન કરો · Phone a Friend'
+          : (isSwitch
+              ? 'આ પ્રશ્ન બદલાય છે — ઇનામ એ જ રહેશે'
+              : 'પ્રેક્ષકો જવાબ આપશે · Ask the audience')));
 
     var clock = el('dAnnounceClock');
     var fill = el('dAnnounceFill');
@@ -1043,6 +1048,7 @@
   function showLifelineOverlay(lifeline) {
     // A poll the hall answers itself, or a phone call: announce it only.
     if (lifeline.code === 'phone_a_friend'
+      || lifeline.code === 'skip_question'
       || (lifeline.code === 'audience_poll' && lifeline.result && lifeline.result.mode === 'announce')) {
       showAnnouncement(lifeline);
       return;

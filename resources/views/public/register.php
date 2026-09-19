@@ -42,7 +42,8 @@
 
       <div class="p-field">
         <label class="p-label" for="age">ઉંમર</label>
-        <input class="p-input" type="number" id="age" name="age" min="5" max="120" inputmode="numeric">
+        <input class="p-input" type="number" id="age" name="age" min="5" max="120" inputmode="numeric" required>
+        <small class="p-help">શો બે ભાગમાં રમાય છે — ૧૦ થી ૨૦ અને ૨૧ થી ૫૦. ઉંમર પરથી તમારો ભાગ નક્કી થશે.</small>
       </div>
 
       <!-- Honeypot: hidden from people, tempting to bots -->

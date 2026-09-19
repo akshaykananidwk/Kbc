@@ -1,7 +1,7 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.6.0
+**Version:** 1.7.0
 **Date:** 13 September 2026
 
 ## Test environment
@@ -26,7 +26,7 @@ development tool only — the application itself still has no Node dependency.
 
 ## Result
 
-**394 checks executed, 394 passed, 0 failed**, plus **39 browser checks, all passed**.
+**419 checks executed, 419 passed, 0 failed**, plus **39 browser checks, all passed**.
 
 Per-check output is in [`verification-results.md`](verification-results.md).
 
@@ -151,6 +151,13 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Uploads | Admin guidance | Settings states the limit in force before anything is uploaded | PASS |
 | New game | Open game left behind | Refusal names the blocking game and its participant; one confirmation ends it and creates the new game | PASS |
 | New game | Audit | The automatic takeover is recorded as `game.replaced`; the old game is closed, never deleted | PASS |
+| Show day | Age groups | A 14-year-old plays as a junior and a 35-year-old as a senior; the group can also be pinned by hand | PASS |
+| Show day | Question targeting | A junior is never asked a question marked senior-only | PASS |
+| Show day | No repeats today | Three shows in a row repeat nothing; the counter reports what is left for each group | PASS |
+| Show day | One switch | The button on the setup screen turns the rule off and on, and the rest of the bank returns when it is off | PASS |
+| Show day | પ્રશ્ન બદલી | Swaps in a different question at the same prize; the old one is remembered and cannot come back in that game; the display announces it | PASS |
+| Show day | Three lifelines | Exactly 50:50, ફોન અ ફ્રેન્ડ and પ્રશ્ન બદલી are enabled, as the show promises | PASS |
+| Show day | Entry gift | One click records the gift every entry is promised, and clicking again undoes it | PASS |
 | Question bank | Content | 200 Gujarati questions, 40 in each of five categories; every row complete, unique and with an explanation | PASS |
 | Question bank | Loading | Seeded into the database and folded into the five categories a balanced show uses | PASS |
 | Question bank | Slugs | A Gujarati category name keeps the same slug, so re-saving never creates a duplicate category | PASS |
@@ -183,7 +190,7 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 
 ## What was verified how
 
-**Automated** (`tests/verify.php`, 394 assertions; `tests/layout.js`, 39 browser assertions): everything in the table above
+**Automated** (`tests/verify.php`, 419 assertions; `tests/layout.js`, 39 browser assertions): everything in the table above
 except where noted below. The suite drives the real HTTP application with real
 cookies and CSRF tokens, and asserts against the live database.
 
@@ -225,47 +232,51 @@ throwaway branch carrying a deliberately broken migration.
 
 ## Known behaviour worth knowing before your event
 
-1. **Current affairs go stale.** The 40 questions in કરંટ અફેર્સ are written from
+1. **A show day runs out eventually.** With "no repeats today" on and 213 active
+   questions, a ten-question show can run about twenty-one times before the day's
+   bank is empty. The operator screen counts down for each age group, and when it
+   does run out the message says exactly which switch to turn off.
+2. **Current affairs go stale.** The 40 questions in કરંટ અફેર્સ are written from
    settled events. Read through that category before each season and refresh it —
    Admin → Questions, or edit `docs/gujarati-question-bank.csv` and import it.
-2. **Balanced order needs the categories to be in rotation.** Admin → Categories
+3. **Balanced order needs the categories to be in rotation.** Admin → Categories
    decides which take part; the five that ship are in, the old sample ones are
    out. With five categories and ten levels that is two questions each; with a
    different count the ladder is simply dealt out in the same cycle.
-3. **Rotation decides what comes next when reuse is on.** The least recently
+4. **Rotation decides what comes next when reuse is on.** The least recently
    used questions are served first (Settings → Game → *Rotate through the
    question bank*), so a bank of 200 is fully used before anything returns.
    Questions pinned to a prize level are an exception by design: a pinned
    question is always served at its level, and rotation only chooses between
    several pinned to the same one.
-4. **Questions do not repeat across games by default.** With
+5. **Questions do not repeat across games by default.** With
    `repeat_questions` off, a question used in any past game is never served
    again, so a 10-level ladder needs 10 fresh questions per show. The dashboard
    and the operator setup screen show how many *unused* questions remain.
    When they run low the setup screen now offers **Reuse questions if needed**
    for that one game, so a show is never blocked; turn the setting on in
    **Settings → Game** to make reuse the default.
-5. **MySQL cannot roll back DDL.** If a future migration fails halfway, the
+6. **MySQL cannot roll back DDL.** If a future migration fails halfway, the
    runner calls that migration's own `down()` to clean up. Migrations should
    therefore always implement `down()` properly.
-6. **Music needs the server to allow it.** PHP's stock limit is 2 MB, which is
+7. **Music needs the server to allow it.** PHP's stock limit is 2 MB, which is
    smaller than most songs. **Admin → Settings → Sound** shows the limit in
    force and, when it is low, offers to write a `.user.ini` asking for 64M
    (PHP-FPM and CGI hosting read that file; `.htaccess` covers mod_php). Where
    the host will not let PHP write it, the same panel shows the text to upload
    by hand. That file is deliberately not part of the update package: a host
    that blocks it would otherwise block every update.
-7. **Live audience voting needs everyone on the same network.** The QR code
+8. **Live audience voting needs everyone on the same network.** The QR code
    contains the address the browser is using, so the phones must be able to
    reach that address. On a venue Wi-Fi set `app_url` in **Settings → General**
    to the machine's LAN address before printing or showing the code.
-8. **Rehearsal games are kept, not discarded.** They are simply excluded from
+9. **Rehearsal games are kept, not discarded.** They are simply excluded from
    history, statistics, the hall of fame and certificates. Filter for them in
    **Admin → Reports → Games** if you want to review a practice run.
-9. **After an update, reload the display once.** It now does this for itself —
+10. **After an update, reload the display once.** It now does this for itself —
    the screen notices the new build within a few seconds and reloads when no
    clock is running — but a manual reload is instant. Asset addresses change
    with every update, so no browser can serve a stale stylesheet any more.
-10. **The updater needs `curl` and `zip`.** Without them the rest of the
+11. **The updater needs `curl` and `zip`.** Without them the rest of the
    application works normally; only the update manager is unavailable, and the
    Updates page says so.

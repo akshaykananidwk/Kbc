@@ -40,8 +40,12 @@ $ready = $maxLevel > 0 && $participants !== [] && ($enoughQuestions || $totalAct
           <label class="label" for="participantSelect">Participant</label>
           <select id="participantSelect">
             <?php foreach ($participants as $participant): ?>
-              <option value="<?= (int) $participant['id'] ?>">
-                <?= e($participant['name']) ?><?= ($participant['registration_no'] ?? '') !== '' ? ' (' . e($participant['registration_no']) . ')' : '' ?><?= ($participant['city'] ?? '') !== '' ? ' — ' . e($participant['city']) : '' ?>
+              <?php
+              $group = (string) ($participant['age_group'] ?? '');
+              $groupLabel = $group === 'junior' ? 'જુનિયર' : ($group === 'senior' ? 'સિનિયર' : '');
+              ?>
+              <option value="<?= (int) $participant['id'] ?>" data-age-group="<?= e($group) ?>">
+                <?= e($participant['name']) ?><?= ($participant['registration_no'] ?? '') !== '' ? ' (' . e($participant['registration_no']) . ')' : '' ?><?= ($participant['age'] ?? '') !== '' && (int) $participant['age'] > 0 ? ' · ' . (int) $participant['age'] . ' વર્ષ' : '' ?><?= $groupLabel !== '' ? ' · ' . $groupLabel : '' ?><?= ($participant['city'] ?? '') !== '' ? ' — ' . e($participant['city']) : '' ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -54,6 +58,28 @@ $ready = $maxLevel > 0 && $participants !== [] && ($enoughQuestions || $totalAct
             <?php endforeach; ?>
           </select>
         </div>
+        <div class="day-switch <?= $noRepeatToday ? 'is-on' : '' ?>">
+          <form method="post" action="<?= e(url('/operator/no-repeat-today')) ?>">
+            <input type="hidden" name="_token" value="<?= e($csrfToken) ?>">
+            <input type="hidden" name="enabled" value="<?= $noRepeatToday ? '0' : '1' ?>">
+            <div class="day-switch__text">
+              <strong><?= $noRepeatToday ? '↻ આજે કોઈ પ્રશ્ન ફરી નહીં પુછાય' : '⚠ આજે પ્રશ્ન ફરી પુછાઈ શકે છે' ?></strong>
+              <small>
+                <?php if ($noRepeatToday): ?>
+                  આજે પુછાયેલો પ્રશ્ન આજે ફરી નહીં આવે — કોઈપણ સેટિંગ હોય તો પણ.
+                  બાકી: <strong><?= (int) $todayLeft['junior'] ?></strong> જુનિયર ·
+                  <strong><?= (int) $todayLeft['senior'] ?></strong> સિનિયર
+                <?php else: ?>
+                  આજે પુછાયેલો પ્રશ્ન ફરી આવી શકે છે. શો દરમ્યાન આ ચાલુ રાખવું સલાહભર્યું છે.
+                <?php endif; ?>
+              </small>
+            </div>
+            <button type="submit" class="btn <?= $noRepeatToday ? 'btn--ghost' : 'btn--gold' ?> btn--sm">
+              <?= $noRepeatToday ? 'બંધ કરો' : 'ચાલુ કરો' ?>
+            </button>
+          </form>
+        </div>
+
         <?php if (!$enoughQuestions && $totalActive >= $needed): ?>
           <div class="alert alert--warning mb-2">
             <span>!</span>
@@ -105,6 +131,16 @@ $ready = $maxLevel > 0 && $participants !== [] && ($enoughQuestions || $totalAct
           </span>
           <span class="check-list__value">
             <?= (int) $questionCount ?> available<?= $allowReuse ? '' : ' of ' . (int) $totalActive ?>
+          </span>
+        </li>
+        <li class="<?= min($todayLeft['junior'], $todayLeft['senior']) >= $needed ? '' : 'is-warn' ?>">
+          <span class="check-list__state"><?= min($todayLeft['junior'], $todayLeft['senior']) >= $needed ? '✓' : '!' ?></span>
+          <span class="check-list__label">
+            Questions left today
+            <small>Juniors are <?= (int) $juniorMaxAge ?> and under; each show needs <?= (int) $needed ?>.</small>
+          </span>
+          <span class="check-list__value">
+            <?= (int) $todayLeft['junior'] ?> junior · <?= (int) $todayLeft['senior'] ?> senior
           </span>
         </li>
         <li>

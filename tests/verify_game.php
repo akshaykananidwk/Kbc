@@ -22,7 +22,10 @@ use App\Services\MigrationService;
 use App\Services\SettingsService;
 use App\Services\UpdateService;
 
-// A clean slate so the assertions below are deterministic.
+// A clean slate so the assertions below are deterministic. Every lifeline is
+// switched on because the suite exercises all of them; the show-day section
+// later sets the three a live show actually offers.
+$db->run('UPDATE lifelines SET is_enabled = 1');
 $db->run('DELETE FROM game_events');
 $db->run('DELETE FROM game_answers');
 $db->run('DELETE FROM game_lifelines');

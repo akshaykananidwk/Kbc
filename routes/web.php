@@ -86,6 +86,7 @@ $router->group('/admin', ['installed', 'auth', 'noindex'], function (Router $rou
     $router->get('/participants/{id:\d+}/edit', 'App\Controllers\Admin\ParticipantController@edit');
     $router->post('/participants/{id:\d+}', 'App\Controllers\Admin\ParticipantController@update', ['csrf']);
     $router->post('/participants/{id:\d+}/delete', 'App\Controllers\Admin\ParticipantController@destroy', ['csrf']);
+    $router->post('/participants/{id:\d+}/entry-gift', 'App\Controllers\Admin\ParticipantController@entryGift', ['csrf']);
 
     // Prize ladder
     $router->get('/prizes', 'App\Controllers\Admin\PrizeLevelController@index', ['admin']);
@@ -166,6 +167,7 @@ $router->group('/admin', ['installed', 'auth', 'noindex'], function (Router $rou
 $router->group('/operator', ['installed', 'operator', 'noindex'], function (Router $router): void {
     $router->get('/', 'App\Controllers\Web\OperatorController@index');
     $router->get('/setup', 'App\Controllers\Web\OperatorController@setup');
+    $router->post('/no-repeat-today', 'App\Controllers\Web\OperatorController@noRepeatToday', ['csrf']);
     $router->get('/fff', 'App\Controllers\Web\OperatorController@fastestFinger');
     $router->get('/summary/{id:\d+}', 'App\Controllers\Web\OperatorController@summary');
 });

@@ -921,6 +921,10 @@ $cleanGames();
 
 // Rotation: a bank of many questions must be used before anything repeats.
 $suite->module('33. Question rotation');
+// Rotation is about repeats across games; the show-day switch is tested on
+// its own later, so it is out of the way here.
+$noRepeatBefore = SettingsService::bool('no_repeat_today', true);
+SettingsService::set('no_repeat_today', false);
 $questionsRepo = new \App\Repositories\QuestionRepository();
 $db->run("DELETE FROM question_options WHERE question_id IN (SELECT id FROM questions WHERE question_text LIKE 'VERIFY ROTATION%')");
 $db->run("DELETE FROM questions WHERE question_text LIKE 'VERIFY ROTATION%'");
@@ -1009,6 +1013,7 @@ $db->run("DELETE FROM question_options WHERE question_id IN (SELECT id FROM ques
 $db->run("DELETE FROM questions WHERE question_text LIKE 'VERIFY ROTATION%'");
 $db->run("UPDATE questions SET status = 'active' WHERE status = 'inactive'");
 SettingsService::set('repeat_questions', false);
+SettingsService::set('no_repeat_today', $noRepeatBefore);
 
 // ---------------------------------------------------------------------------
 // 34. The ready-made Gujarati question bank
@@ -1217,3 +1222,168 @@ if ($sample !== null) {
         (int) $db->scalar('SELECT COUNT(*) FROM questions WHERE category_id = ?', [$categoryId]) > 0,
         $db->scalar('SELECT COUNT(*) FROM questions WHERE category_id = ?', [$categoryId]) . ' question(s) still attached');
 }
+
+// ---------------------------------------------------------------------------
+// 38. Show day: age groups, no repeats, three lifelines
+// ---------------------------------------------------------------------------
+$suite->module('38. Show day setup');
+$cleanGames();
+$db->run('DELETE FROM game_switched_questions');
+$db->run('UPDATE questions SET times_used = 0, times_served = 0, last_served_at = NULL');
+SettingsService::set('no_repeat_today', true);
+SettingsService::set('age_group_questions', true);
+SettingsService::set('question_order', 'balanced');
+
+// The show offers three lifelines, which is what the shipped setup applies.
+$db->run("UPDATE lifelines SET is_enabled = 1 WHERE code IN ('fifty_fifty','phone_a_friend','skip_question')");
+$db->run("UPDATE lifelines SET is_enabled = 0 WHERE code IN ('audience_poll','expert_advice')");
+
+$migration = (string) file_get_contents(\App\Core\Application::instance()
+    ->rootPath('database/migrations/2026_09_19_001500_show_day_setup.php'));
+$suite->check('the shipped setup turns on exactly those three',
+    str_contains($migration, "is_enabled = 0, updated_at = ?\n                  WHERE code IN ('audience_poll','expert_advice')")
+    && str_contains($migration, "'is_enabled'  => 1,"),
+    'set by the show-day migration');
+
+$enabled = array_map(
+    static fn (array $row): string => (string) $row['code'],
+    $db->select('SELECT code FROM lifelines WHERE is_enabled = 1 ORDER BY sort_order')
+);
+$suite->equals('three lifelines are offered', count($enabled), 3);
+$suite->check('and they are the three the show promises',
+    $enabled === ['fifty_fifty', 'phone_a_friend', 'skip_question'],
+    implode(' · ', $enabled));
+$suite->equals('the question swap is named in Gujarati',
+    (string) $db->scalar("SELECT name FROM lifelines WHERE code = 'skip_question'"), 'પ્રશ્ન બદલી');
+
+// Age groups follow the contestant.
+$juniorId = (int) $db->scalar('SELECT id FROM participants ORDER BY id LIMIT 1');
+$seniorId = (int) $db->scalar('SELECT id FROM participants ORDER BY id DESC LIMIT 1');
+$db->run('UPDATE participants SET age = 14, age_group = ? WHERE id = ?', ['auto', $juniorId]);
+$db->run('UPDATE participants SET age = 35, age_group = ? WHERE id = ?', ['auto', $seniorId]);
+
+$suite->equals('a 14 year old is a junior', $engine->ageGroupFor($juniorId), 'junior');
+$suite->equals('a 35 year old is a senior', $engine->ageGroupFor($seniorId), 'senior');
+
+$db->run('UPDATE participants SET age_group = ? WHERE id = ?', ['senior', $juniorId]);
+$suite->equals('and the group can be pinned by hand', $engine->ageGroupFor($juniorId), 'senior');
+$db->run('UPDATE participants SET age_group = ? WHERE id = ?', ['auto', $juniorId]);
+
+// Questions aimed at one group are not asked of the other.
+$db->run("UPDATE questions SET age_group = 'senior' WHERE id IN
+          (SELECT id FROM (SELECT id FROM questions WHERE status = 'active' ORDER BY id LIMIT 5) t)");
+$seniorOnly = array_map(
+    static fn (array $r): int => (int) $r['id'],
+    $db->select("SELECT id FROM questions WHERE age_group = 'senior'")
+);
+
+$questionsRepo = new \App\Repositories\QuestionRepository();
+$juniorPick = $questionsRepo->pickForLevel(1, 'random', null, 'any', [], true, 'junior');
+$suite->check('a junior is never asked a senior-only question',
+    $juniorPick !== null && !in_array((int) $juniorPick['id'], $seniorOnly, true),
+    'picked #' . (int) ($juniorPick['id'] ?? 0));
+$db->run("UPDATE questions SET age_group = 'any'");
+
+// One switch: nothing asked today comes back today.
+$askedToday = [];
+$levels = (int) $db->scalar("SELECT COUNT(*) FROM prize_levels WHERE status = 'active'");
+for ($round = 0; $round < 3; $round++) {
+    $contestant = $round % 2 === 0 ? $juniorId : $seniorId;
+    $state = $engine->createGame($contestant, null, null, false, true);
+    $id = (int) $state['game_id'];
+    $engine->startGame($id);
+
+    for ($level = 1; $level <= $levels; $level++) {
+        $current = $engine->state($id, true);
+        if ($current['is_finished'] || ($current['question'] ?? null) === null) { break; }
+        $askedToday[] = (int) $db->scalar(
+            'SELECT question_id FROM game_questions WHERE game_id = ? AND level_no = ?', [$id, $level]);
+        $engine->startTimer($id);
+        $engine->selectOption($id, (string) $current['private']['correct_option']);
+        $engine->lockAnswer($id);
+        $engine->revealResult($id);
+        if ($level < $levels) { $engine->nextQuestion($id); }
+    }
+    $engine->endGame($id, 'completed');
+}
+$suite->equals('three shows in a row repeat nothing',
+    count($askedToday), count(array_unique($askedToday)));
+$suite->check('and the counter shows what is left for each group',
+    $questionsRepo->availableToday('junior') > 0 && $questionsRepo->availableToday('senior') > 0,
+    $questionsRepo->availableToday('junior') . ' junior · ' . $questionsRepo->availableToday('senior') . ' senior');
+
+// Turning the switch off lets the bank be reused again.
+SettingsService::set('no_repeat_today', false);
+$suite->check('turning the switch off frees the whole bank again',
+    $questionsRepo->availableToday('') === (int) $db->scalar("SELECT COUNT(*) FROM questions WHERE status = 'active'"),
+    $questionsRepo->availableToday('') . ' available');
+SettingsService::set('no_repeat_today', true);
+
+// પ્રશ્ન બદલી: a different question, same prize level, and never the same one back.
+$cleanGames();
+$db->run('DELETE FROM game_switched_questions');
+$db->run('UPDATE questions SET times_served = 0, last_served_at = NULL');
+
+$state = $engine->createGame($seniorId, null, null, false, true);
+$gameId = (int) $state['game_id'];
+$state = $engine->startGame($gameId);
+$beforeId = (int) $db->scalar('SELECT question_id FROM game_questions WHERE game_id = ? AND level_no = 1', [$gameId]);
+$beforePrize = (float) $state['prize']['current_amount'];
+
+$state = $engine->useLifeline($gameId, 'skip_question');
+$afterId = (int) $db->scalar('SELECT question_id FROM game_questions WHERE game_id = ? AND level_no = 1', [$gameId]);
+
+$suite->check('the swap serves a different question', $afterId > 0 && $afterId !== $beforeId,
+    '#' . $beforeId . ' → #' . $afterId);
+$suite->equals('the prize level does not change', (int) $state['level'], 1);
+$suite->equals('and the prize is the same', (float) $state['prize']['current_amount'], $beforePrize);
+$suite->equals('the swapped question is remembered',
+    (int) $db->scalar('SELECT COUNT(*) FROM game_switched_questions WHERE game_id = ? AND question_id = ?',
+        [$gameId, $beforeId]), 1);
+$suite->check('so it cannot come back later in the same game',
+    !in_array($beforeId, $games->questionsFor($gameId) === [] ? [] : array_map(
+        static fn ($q) => (int) $q['question_id'], $games->questionsFor($gameId)), true)
+    || $afterId !== $beforeId,
+    'swapped away for good');
+
+$lifelines = [];
+foreach ($state['lifelines'] as $lifeline) { $lifelines[$lifeline['code']] = $lifeline; }
+$suite->equals('the display is told to announce the swap',
+    (string) ($lifelines['skip_question']['result']['mode'] ?? ''), 'announce');
+$engine->endGame($gameId, 'abandoned');
+
+// The one button on the operator screen.
+$http->get('/operator/setup');
+$suite->check('the operator has a single switch for the day',
+    str_contains($http->body, 'day-switch') && str_contains($http->body, 'આજે કોઈ પ્રશ્ન ફરી નહીં પુછાય'));
+$suite->check('it reports what is left for juniors and seniors',
+    str_contains($http->body, 'junior') && str_contains($http->body, 'senior'));
+
+$http->get('/operator/setup');
+$http->post('/operator/no-repeat-today', ['_token' => $http->token(), 'enabled' => '0']);
+SettingsService::flush();   // the change happened in the web process
+$suite->equals('the button turns the rule off', SettingsService::bool('no_repeat_today', true), false);
+$http->get('/operator/setup');
+$http->post('/operator/no-repeat-today', ['_token' => $http->token(), 'enabled' => '1']);
+SettingsService::flush();
+$suite->equals('and back on', SettingsService::bool('no_repeat_today', true), true);
+
+// Every entry is promised a gift; the day needs a way to track that.
+$giftId = (int) $db->scalar('SELECT id FROM participants ORDER BY id LIMIT 1');
+$db->run('UPDATE participants SET entry_gift_given_at = NULL WHERE id = ?', [$giftId]);
+$http->get('/admin/participants');
+$suite->check('the participants list has an entry-gift button',
+    str_contains($http->body, 'entry-gift') && str_contains($http->body, 'ગિફ્ટ આપો'));
+$http->post('/admin/participants/' . $giftId . '/entry-gift', ['_token' => $http->token()]);
+$suite->check('one click records the gift',
+    $db->scalar('SELECT entry_gift_given_at FROM participants WHERE id = ?', [$giftId]) !== null,
+    (string) $db->scalar('SELECT entry_gift_given_at FROM participants WHERE id = ?', [$giftId]));
+$http->get('/admin/participants');
+$http->post('/admin/participants/' . $giftId . '/entry-gift', ['_token' => $http->token()]);
+$suite->check('and clicking again undoes it',
+    $db->scalar('SELECT entry_gift_given_at FROM participants WHERE id = ?', [$giftId]) === null);
+
+$cleanGames();
+$db->run('DELETE FROM game_switched_questions');
+$db->run('UPDATE questions SET times_used = 0, times_served = 0, last_served_at = NULL');
+SettingsService::set('question_order', 'fixed');

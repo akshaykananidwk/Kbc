@@ -35,6 +35,39 @@ final class ParticipantController extends Controller
         ]);
     }
 
+    /**
+     * Marks the entry gift as handed over - the one every registration is
+     * promised. One click per person on the day.
+     */
+    public function entryGift(Request $request): Response
+    {
+        $id = $request->intParam('id');
+        $participant = $this->participants->find($id);
+        if ($participant === null) {
+            $this->error('That participant could not be found.');
+            return $this->redirect('/admin/participants');
+        }
+
+        $given = ($participant['entry_gift_given_at'] ?? null) === null;
+        $this->participants->updateById($id, [
+            'entry_gift_given_at' => $given ? date('Y-m-d H:i:s') : null,
+            'updated_at'          => date('Y-m-d H:i:s'),
+        ]);
+
+        AuditService::log(
+            'participant.entry_gift',
+            ($given ? 'Entry gift given to ' : 'Entry gift undone for ') . $participant['name'],
+            'participant',
+            $id
+        );
+
+        $this->success($given
+            ? $participant['name'] . ' — સ્યોર ગિફ્ટ આપી દીધી.'
+            : $participant['name'] . ' — ગિફ્ટની નોંધ રદ કરી.');
+
+        return $this->redirect('/admin/participants');
+    }
+
     public function create(Request $request): Response
     {
         return $this->view('admin.participants.form', [
@@ -130,6 +163,7 @@ final class ParticipantController extends Controller
             'email'           => 'nullable|email|max:190',
             'city'            => 'nullable|string|max:120',
             'age'             => 'nullable|int|between:1,120',
+            'age_group'       => 'nullable|in:auto,junior,senior',
             'gender'          => 'nullable|in:male,female,other,unspecified',
             'notes'           => 'nullable|string|max:2000',
             'status'          => 'required|in:active,inactive,played',
@@ -153,6 +187,9 @@ final class ParticipantController extends Controller
             'email'           => $data['email'] ?? null,
             'city'            => $data['city'] ?? null,
             'age'             => ($data['age'] ?? 0) > 0 ? (int) $data['age'] : null,
+            'age_group'       => in_array($data['age_group'] ?? 'auto', ['junior', 'senior'], true)
+                ? $data['age_group']
+                : 'auto',
             'gender'          => $data['gender'] ?? 'unspecified',
             'notes'           => $data['notes'] ?? null,
             'status'          => $data['status'],

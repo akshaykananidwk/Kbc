@@ -73,7 +73,7 @@ $view->start('content');
     <?php else: ?>
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th></th><th>Name</th><th>Reg. no.</th><th>Mobile</th><th>City</th><th class="num">Games</th><th class="num">Best prize</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Name</th><th>Reg. no.</th><th>Mobile</th><th>City</th><th class="num">Games</th><th class="num">Best prize</th><th>Status</th><th>Entry gift</th><th></th></tr></thead>
         <tbody>
         <?php foreach ($participants as $participant): ?>
           <tr>
@@ -84,13 +84,37 @@ $view->start('content');
                 <div class="thumb" style="display:grid;place-items:center;font-weight:800;color:var(--ink-500)"><?= e(mb_substr((string) $participant['name'], 0, 1)) ?></div>
               <?php endif; ?>
             </td>
-            <td><strong><?= e($participant['name']) ?></strong><?php if ($participant['age']): ?><div class="small muted"><?= (int) $participant['age'] ?> years</div><?php endif; ?></td>
+            <td>
+              <strong><?= e($participant['name']) ?></strong>
+              <?php
+              $pAge = (int) ($participant['age'] ?? 0);
+              $pinned = (string) ($participant['age_group'] ?? 'auto');
+              $pGroup = $pinned !== 'auto'
+                  ? $pinned
+                  : ($pAge > 0 ? ($pAge <= (int) setting('junior_max_age', 20) ? 'junior' : 'senior') : '');
+              ?>
+              <?php if ($pAge > 0 || $pGroup !== ''): ?>
+                <div class="small muted">
+                  <?= $pAge > 0 ? (int) $pAge . ' years' : '' ?><?= $pAge > 0 && $pGroup !== '' ? ' · ' : '' ?><?= $pGroup === 'junior' ? 'જુનિયર' : ($pGroup === 'senior' ? 'સિનિયર' : '') ?>
+                </div>
+              <?php endif; ?>
+            </td>
             <td class="mono small"><?= e($participant['registration_no'] ?? '—') ?></td>
             <td class="small"><?= e($participant['mobile'] ?? '—') ?></td>
             <td class="small"><?= e($participant['city'] ?? '—') ?></td>
             <td class="num"><?= (int) $participant['games_played'] ?></td>
             <td class="num"><?= e(money($participant['best_prize'])) ?></td>
             <td><span class="badge badge--<?= e(status_badge((string) $participant['status'])) ?>"><?= e($participant['status']) ?></span></td>
+            <td>
+              <form method="post" action="<?= e(url('/admin/participants/' . (int) $participant['id'] . '/entry-gift')) ?>">
+                <input type="hidden" name="_token" value="<?= e($csrfToken) ?>">
+                <?php if (($participant['entry_gift_given_at'] ?? null) !== null): ?>
+                  <button type="submit" class="btn btn--ghost btn--sm" title="<?= e((string) $participant['entry_gift_given_at']) ?>">🎁 આપી દીધી</button>
+                <?php else: ?>
+                  <button type="submit" class="btn btn--gold btn--sm">ગિફ્ટ આપો</button>
+                <?php endif; ?>
+              </form>
+            </td>
             <td class="actions">
               <a class="btn btn--ghost btn--sm" href="<?= e(url('/admin/participants/' . (int) $participant['id'] . '/edit')) ?>">Edit</a>
               <form method="post" action="<?= e(url('/admin/participants/' . (int) $participant['id'] . '/delete')) ?>" style="display:inline"

@@ -42,6 +42,16 @@ The two screens stay synchronised through a lightweight long-poll against
 - **200 Gujarati questions ready to go** — 40 in each of five categories — ધાર્મિકતા, દેશભક્તિ,
   ભારતદર્શન, કરંટ અફેર્સ and જનરલ નોલેજ — installed with one command and editable as a
   CSV (`docs/gujarati-question-bank.csv`).
+- **Two age groups in one show.** Juniors (up to 20) and seniors play the same ladder,
+  but juniors meet junior and open questions — easier first — and seniors the harder
+  ones. The age comes from the registration; a contestant can also be pinned to a group
+  by hand.
+- **One switch for the day.** "આજે કોઈ પ્રશ્ન ફરી નહીં પુછાય" sits on the setup screen:
+  with it on, a question asked at any point today is never asked again, whatever else is
+  configured, and the screen shows how many are left for each group.
+- **Three lifelines, as the show promises:** 50:50, ફોન અ ફ્રેન્ડ and **પ્રશ્ન બદલી** —
+  swap this question for another at the same prize. The swapped-away question never
+  returns in that game.
 - **Two questions from every category.** The *balanced* running order deals the show out
   over the categories in rotation: five categories and a ten-level ladder means two from
   each, in a different order every game.

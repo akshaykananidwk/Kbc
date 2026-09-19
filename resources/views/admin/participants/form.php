@@ -49,6 +49,17 @@ $action = $isEdit ? url('/admin/participants/' . (int) $participant['id']) : url
           <label class="label" for="age">Age</label>
           <input type="number" id="age" name="age" min="1" max="120" value="<?= e($val('age')) ?>">
         </div>
+
+        <div class="field field--6">
+          <label class="label" for="age_group">Age group</label>
+          <select id="age_group" name="age_group">
+            <?php $group = (string) ($val('age_group') ?: 'auto'); ?>
+            <option value="auto" <?= $group === 'auto' ? 'selected' : '' ?>>From their age (juniors up to <?= (int) setting('junior_max_age', 20) ?>)</option>
+            <option value="junior" <?= $group === 'junior' ? 'selected' : '' ?>>જુનિયર · Junior</option>
+            <option value="senior" <?= $group === 'senior' ? 'selected' : '' ?>>સિનિયર · Senior</option>
+          </select>
+          <small class="field__help">Decides which questions this contestant is asked.</small>
+        </div>
         <div class="field field--3">
           <label class="label" for="gender">Gender</label>
           <select id="gender" name="gender">

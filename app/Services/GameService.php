@@ -178,6 +178,41 @@ final class GameService
         return $ids[($levelNo - 1) % count($ids)];
     }
 
+    /**
+     * Which age group a participant plays in.
+     *
+     * The show runs in two halves - juniors and seniors - so the questions
+     * follow the contestant. A participant can be pinned to a group by hand;
+     * otherwise their age decides, and with no age recorded the questions
+     * stay open to both.
+     */
+    public function ageGroupFor(int $participantId): string
+    {
+        if ($participantId < 1) {
+            return '';
+        }
+
+        $participant = $this->db->selectOne(
+            'SELECT age, age_group FROM participants WHERE id = ? LIMIT 1',
+            [$participantId]
+        );
+        if ($participant === null) {
+            return '';
+        }
+
+        $chosen = (string) ($participant['age_group'] ?? 'auto');
+        if ($chosen === 'junior' || $chosen === 'senior') {
+            return $chosen;
+        }
+
+        $age = (int) ($participant['age'] ?? 0);
+        if ($age <= 0) {
+            return '';
+        }
+
+        return $age <= SettingsService::int('junior_max_age', 20) ? 'junior' : 'senior';
+    }
+
     /** Moves from the participant introduction to the first question. */
     public function startGame(int $gameId): array
     {
@@ -231,6 +266,7 @@ final class GameService
 
             $order = (string) $game['question_order'];
             $categoryId = $level['category_id'] === null ? null : (int) $level['category_id'];
+            $ageGroup = $this->ageGroupFor((int) $game['participant_id']);
 
             // Balanced order spreads the show evenly over the categories:
             // with five categories and a ten-level ladder that is two
@@ -245,7 +281,8 @@ final class GameService
                 $categoryId,
                 (string) $level['difficulty'],
                 $this->games->servedQuestionIds($gameId),
-                $allowReuse
+                $allowReuse,
+                $ageGroup
             );
 
             // A category that has run dry must never stop the show.
@@ -256,11 +293,23 @@ final class GameService
                     $level['category_id'] === null ? null : (int) $level['category_id'],
                     (string) $level['difficulty'],
                     $this->games->servedQuestionIds($gameId),
-                    $allowReuse
+                    $allowReuse,
+                    $ageGroup
                 );
             }
 
             if ($question === null) {
+                // Say which rule ran out, so the operator knows what to do
+                // rather than hunting through settings mid-show.
+                if (SettingsService::bool('no_repeat_today', true)
+                    && $this->questions->availableToday($ageGroup) === 0) {
+                    throw new HttpException(
+                        422,
+                        'આજે બધા પ્રશ્નો પુછાઈ ગયા છે. Every question has been asked today. '
+                        . 'Turn off "no repeats today" on the setup screen, or add more questions.'
+                    );
+                }
+
                 throw new HttpException(
                     422,
                     'No unused question is available for level ' . $levelNo
@@ -950,7 +999,7 @@ final class GameService
             'audience_poll'  => $this->buildAudiencePoll($question, $config, $gameId),
             'expert_advice'  => $this->buildExpertAdvice($question, $config),
             'phone_a_friend' => $this->buildPhoneAFriend($config),
-            'skip_question'  => ['skipped' => true],
+            'skip_question'  => ['mode' => 'announce', 'seconds' => 4, 'switched' => true],
             default          => [],
         };
 
@@ -986,12 +1035,39 @@ final class GameService
         $game = $this->mustFind($gameId);
         $level = (int) $game['current_level'];
 
-        $this->db->transaction(function () use ($gameId, $level): void {
+        $current = (int) ($game['current_question_id'] ?? 0);
+
+        $this->db->transaction(function () use ($gameId, $level, $current): void {
+            if ($current > 0) {
+                // Remember it, so the swap cannot hand back the same question.
+                $this->db->run(
+                    'INSERT IGNORE INTO game_switched_questions (game_id, question_id, level_no, created_at)
+                     VALUES (?, ?, ?, ?)',
+                    [$gameId, $current, $level, date('Y-m-d H:i:s')]
+                );
+            }
             $this->db->run('DELETE FROM game_questions WHERE game_id = ? AND level_no = ?', [$gameId, $level]);
         });
 
         $this->games->logEvent($gameId, 'question.skipped', self::STATE_QUESTION, $level);
-        return $this->loadLevel($gameId, $level);
+        $state = $this->loadLevel($gameId, $level);
+
+        // The display attaches a lifeline's panel to the question it was used
+        // on. A swap replaces that question, so the record follows it -
+        // otherwise the screen never announces the swap that just happened.
+        $replacement = (int) ($this->db->scalar(
+            'SELECT question_id FROM game_questions WHERE game_id = ? AND level_no = ? LIMIT 1',
+            [$gameId, $level]
+        ) ?? 0);
+        if ($replacement > 0) {
+            $this->db->run(
+                "UPDATE game_lifelines SET question_id = ?
+                 WHERE game_id = ? AND lifeline_code = 'skip_question' AND level_no = ?",
+                [$replacement, $gameId, $level]
+            );
+        }
+
+        return $this->state($gameId, true);
     }
 
     /**
