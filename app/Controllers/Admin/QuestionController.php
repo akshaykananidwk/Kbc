@@ -298,6 +298,63 @@ final class QuestionController extends Controller
         return $this->redirect('/admin/questions');
     }
 
+    /** The form that replaces the whole question bank before a new event. */
+    public function resetForm(Request $request): Response
+    {
+        $database = Database::instance();
+
+        return $this->view('admin.questions.reset', [
+            'questionCount' => (int) ($database->scalar('SELECT COUNT(*) FROM questions') ?? 0),
+            'gameCount'     => (int) ($database->scalar('SELECT COUNT(*) FROM games') ?? 0),
+        ]);
+    }
+
+    /**
+     * Deletes every question and loads a fresh bank.
+     *
+     * Past games point at the questions they asked, so that history goes too -
+     * which is what a reset before a new event means. A database backup is
+     * taken first, and the admin has to type the confirmation word.
+     */
+    public function reset(Request $request): Response
+    {
+        if (strtoupper(trim($request->string('confirm'))) !== 'DELETE') {
+            $this->error('Type DELETE in the box to confirm that the questions should be replaced.');
+            return $this->redirect('/admin/questions/reset');
+        }
+
+        $bank = $request->string('bank', 'senior');
+        if (!in_array($bank, ['senior', 'open', 'both'], true)) {
+            $bank = 'senior';
+        }
+
+        $seeder = \App\Services\SeederService::make();
+        $backup = \App\Services\BackupService::make()->backupDatabase(
+            AuthService::id(),
+            'Before replacing the question bank'
+        );
+
+        $cleared = $seeder->clearQuestions();
+
+        $added = $bank === 'both'
+            ? $seeder->seedQuestionBank('open') + $seeder->seedQuestionBank('senior')
+            : $seeder->seedQuestionBank($bank);
+
+        AuditService::log(
+            'question.bank_reset',
+            'Replaced the question bank: removed ' . $cleared['questions'] . ', loaded ' . $added
+            . ' (' . $bank . '). Backup: ' . $backup['filename'],
+            'question'
+        );
+
+        $this->success(
+            $cleared['questions'] . ' જૂના પ્રશ્ન કાઢ્યા, ' . $added . ' નવા પ્રશ્ન ઉમેર્યા. '
+            . 'બેકઅપ: ' . $backup['filename']
+        );
+
+        return $this->redirect('/admin/questions');
+    }
+
     public function export(Request $request): Response
     {
         $rows = Database::instance()->select(

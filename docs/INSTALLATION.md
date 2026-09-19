@@ -146,8 +146,25 @@ Review and press **Install now**. The installer:
 Over SSH:
 
 ```bash
-php console.php seed --questions
+php console.php seed --questions            # the open bank (all ages)
+php console.php seed --questions --senior   # the senior bank
 ```
+
+A second bank of 200 harder questions ships for the senior half of a show. No
+question appears in both banks, so loading both gives 400 with no repeat.
+
+To **replace** the bank before a new event — delete everything and start
+again — use **Admin → Questions → Replace bank**, or:
+
+```bash
+php console.php questions:reset            # shows what would go, changes nothing
+php console.php questions:reset --force --senior   # backs up, clears, loads the senior bank
+php console.php questions:reset --force --both     # loads both banks (400 questions)
+```
+
+The reset also removes the games that used those questions, which is what a
+fresh start means; a database backup is taken first, so it can be undone from
+**Admin → Backups**.
 
 No SSH? **Admin → Questions → Import**, and upload
 `docs/gujarati-question-bank.csv` from the package. The same file opens in

@@ -39,7 +39,11 @@ The two screens stay synchronised through a lightweight long-poll against
 - **A clear reveal.** On a wrong answer the chosen option turns red and the real answer
   turns green on the board; a moment later the screen spells both out in words, with the
   explanation. Nothing on screen changes size while an answer is chosen, locked or revealed.
-- **200 Gujarati questions ready to go** — 40 in each of five categories — ધાર્મિકતા, દેશભક્તિ,
+- **Two banks of 200 Gujarati questions**, 40 in each of five categories and not one
+  question shared between them: an open bank that suits every age, and a harder senior
+  bank. Load either, or both for 400 with no repeats
+  (`php console.php questions:reset --force --senior`, or **Admin → Questions → Replace
+  bank**, which backs the database up first) — ધાર્મિકતા, દેશભક્તિ,
   ભારતદર્શન, કરંટ અફેર્સ and જનરલ નોલેજ — installed with one command and editable as a
   CSV (`docs/gujarati-question-bank.csv`).
 - **Two age groups in one show.** Juniors (up to 20) and seniors play the same ladder,
@@ -194,7 +198,9 @@ index.php        front controller      console.php  CLI maintenance
 php console.php migrate           # run pending migrations
 php console.php migrate:status    # what has and has not run
 php console.php seed --demo       # seed defaults (and demo content)
-php console.php seed --questions  # add the 200-question Gujarati bank
+php console.php seed --questions           # add the open Gujarati bank
+php console.php seed --questions --senior  # add the senior bank instead
+php console.php questions:reset --force --senior   # replace the whole bank
 php console.php backup:database   # create a database backup
 php console.php cache:clear       # clear application cache
 php console.php update:check      # ask GitHub about a newer version

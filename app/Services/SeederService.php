@@ -41,13 +41,51 @@ final class SeederService
      * The ready-made Gujarati question bank: 200 questions across five
      * categories. Existing questions are never touched.
      */
-    public function seedQuestionBank(): int
+    public function seedQuestionBank(string $bank = 'open'): int
     {
         $before = (int) ($this->db->scalar('SELECT COUNT(*) FROM questions') ?? 0);
-        (new QuestionBankSeeder($this->db))->run();
+        (new QuestionBankSeeder($this->db))->useBank($bank)->run();
         $after = (int) ($this->db->scalar('SELECT COUNT(*) FROM questions') ?? 0);
 
         return $after - $before;
+    }
+
+    /**
+     * Clears the question bank so a fresh one can be loaded before a new event.
+     *
+     * Past games point at the questions they asked, so that history goes with
+     * them - which is the point of a reset - and the caller is expected to
+     * take a backup first. Settings, participants, prizes, gifts and users are
+     * all left exactly as they are.
+     *
+     * @return array{questions:int,games:int}
+     */
+    public function clearQuestions(): array
+    {
+        $questions = (int) ($this->db->scalar('SELECT COUNT(*) FROM questions') ?? 0);
+        $games = (int) ($this->db->scalar('SELECT COUNT(*) FROM games') ?? 0);
+
+        $this->db->transaction(function (Database $db): void {
+            // Everything that points at a question, innermost first.
+            foreach ([
+                'game_answers',
+                'game_lifelines',
+                'game_switched_questions',
+                'game_questions',
+                'game_events',
+                'certificates',
+                'audience_votes',
+                'audience_polls',
+                'games',
+                'question_options',
+                'questions',
+            ] as $table) {
+                $db->run('DELETE FROM ' . $table);
+            }
+            $db->run("UPDATE gifts SET quantity_used = 0, status = 'active'");
+        });
+
+        return ['questions' => $questions, 'games' => $games];
     }
 
     /**

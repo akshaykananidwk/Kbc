@@ -298,6 +298,27 @@ final class GameService
                 );
             }
 
+            // Nor may an age group with no questions of its own: a bank aimed
+            // at seniors should still let a junior play rather than leaving
+            // the operator with a game that cannot start.
+            if ($question === null && $ageGroup !== '') {
+                $question = $this->questions->pickForLevel(
+                    $levelNo,
+                    $order === 'balanced' ? 'random' : $order,
+                    $level['category_id'] === null ? null : (int) $level['category_id'],
+                    (string) $level['difficulty'],
+                    $this->games->servedQuestionIds($gameId),
+                    $allowReuse,
+                    ''
+                );
+
+                if ($question !== null) {
+                    $this->games->logEvent($gameId, 'question.age_group_fallback', null, $levelNo, [
+                        'age_group' => $ageGroup,
+                    ]);
+                }
+            }
+
             if ($question === null) {
                 // Say which rule ran out, so the operator knows what to do
                 // rather than hunting through settings mid-show.

@@ -12,6 +12,7 @@ $view->start('content');
     <a class="btn btn--primary" href="<?= e(url('/admin/questions/create')) ?>">+ Add question</a>
     <a class="btn btn--ghost" href="<?= e(url('/admin/questions/import')) ?>">Import CSV</a>
     <a class="btn btn--ghost" href="<?= e(url('/admin/questions/export')) ?>">Export CSV</a>
+    <a class="btn btn--ghost" href="<?= e(url('/admin/questions/reset')) ?>">Replace bank</a>
   </div>
 </div>
 

@@ -66,6 +66,8 @@ $router->group('/admin', ['installed', 'auth', 'noindex'], function (Router $rou
     $router->get('/questions/import', 'App\Controllers\Admin\QuestionController@importForm', ['admin']);
     $router->post('/questions/import', 'App\Controllers\Admin\QuestionController@import', ['admin', 'csrf']);
     $router->get('/questions/export', 'App\Controllers\Admin\QuestionController@export', ['admin']);
+    $router->get('/questions/reset', 'App\Controllers\Admin\QuestionController@resetForm', ['admin']);
+    $router->post('/questions/reset', 'App\Controllers\Admin\QuestionController@reset', ['admin', 'csrf']);
     $router->get('/questions/{id:\d+}', 'App\Controllers\Admin\QuestionController@show', ['admin']);
     $router->get('/questions/{id:\d+}/edit', 'App\Controllers\Admin\QuestionController@edit', ['admin']);
     $router->post('/questions/{id:\d+}', 'App\Controllers\Admin\QuestionController@update', ['admin', 'csrf']);

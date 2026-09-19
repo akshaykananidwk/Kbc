@@ -42,9 +42,22 @@ final class QuestionBankSeeder extends Seeder
         'current-affairs'   => 'કરંટ અફેર્સ',
     ];
 
+    /** Which bank to load: 'open' (suits every age) or 'senior'. */
+    private string $bank = 'open';
+
+    public function useBank(string $bank): self
+    {
+        $this->bank = $bank === 'senior' ? 'senior' : 'open';
+        return $this;
+    }
+
     public function run(): void
     {
-        $file = Application::instance()->rootPath('database/seeds/gujarati-question-bank.php');
+        $file = Application::instance()->rootPath(
+            $this->bank === 'senior'
+                ? 'database/seeds/gujarati-question-bank-senior.php'
+                : 'database/seeds/gujarati-question-bank.php'
+        );
         if (!is_file($file)) {
             return;
         }
@@ -110,6 +123,8 @@ final class QuestionBankSeeder extends Seeder
                 'correct_option'    => $correct,
                 'explanation'       => $explanation,
                 'difficulty'        => $difficulty,
+                // Senior questions are only ever asked of the senior half.
+                'age_group'         => $this->bank === 'senior' ? 'senior' : 'any',
                 'time_limit'        => 30,
                 'prize_level'       => null,
                 'lifelines_allowed' => 1,

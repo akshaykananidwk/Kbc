@@ -12,11 +12,11 @@ declare(strict_types=1);
  * The "કરંટ અફેર્સ" set is the one worth refreshing before each season.
  */
 
-const GQ_DHARMIK  = 'ધાર્મિકતા';
-const GQ_DESH     = 'દેશભક્તિ';
-const GQ_BHARAT   = 'ભારતદર્શન';
-const GQ_CURRENT  = 'કરંટ અફેર્સ';
-const GQ_GK       = 'જનરલ નોલેજ';
+defined('GQ_DHARMIK') || define('GQ_DHARMIK', 'ધાર્મિકતા');
+defined('GQ_DESH') || define('GQ_DESH', 'દેશભક્તિ');
+defined('GQ_BHARAT') || define('GQ_BHARAT', 'ભારતદર્શન');
+defined('GQ_CURRENT') || define('GQ_CURRENT', 'કરંટ અફેર્સ');
+defined('GQ_GK') || define('GQ_GK', 'જનરલ નોલેજ');
 
 return [
 

@@ -1269,20 +1269,51 @@ $db->run('UPDATE participants SET age_group = ? WHERE id = ?', ['senior', $junio
 $suite->equals('and the group can be pinned by hand', $engine->ageGroupFor($juniorId), 'senior');
 $db->run('UPDATE participants SET age_group = ? WHERE id = ?', ['auto', $juniorId]);
 
-// Questions aimed at one group are not asked of the other.
-$db->run("UPDATE questions SET age_group = 'senior' WHERE id IN
-          (SELECT id FROM (SELECT id FROM questions WHERE status = 'active' ORDER BY id LIMIT 5) t)");
-$seniorOnly = array_map(
+// Questions aimed at one group are not asked of the other. The bank that
+// ships is entirely senior, so the fixture opens a few up first.
+$ageGroupBefore = [];
+foreach ($db->select('SELECT id, age_group FROM questions') as $row) {
+    $ageGroupBefore[(int) $row['id']] = (string) $row['age_group'];
+}
+
+$db->run("UPDATE questions SET age_group = 'senior'");
+$db->run("UPDATE questions SET age_group = 'any' WHERE id IN
+          (SELECT id FROM (SELECT id FROM questions WHERE status = 'active' ORDER BY id LIMIT 6) t)");
+$openToAll = array_map(
     static fn (array $r): int => (int) $r['id'],
-    $db->select("SELECT id FROM questions WHERE age_group = 'senior'")
+    $db->select("SELECT id FROM questions WHERE age_group = 'any'")
 );
 
 $questionsRepo = new \App\Repositories\QuestionRepository();
 $juniorPick = $questionsRepo->pickForLevel(1, 'random', null, 'any', [], true, 'junior');
-$suite->check('a junior is never asked a senior-only question',
-    $juniorPick !== null && !in_array((int) $juniorPick['id'], $seniorOnly, true),
+$suite->check('a junior is only asked questions open to them',
+    $juniorPick !== null && in_array((int) $juniorPick['id'], $openToAll, true),
     'picked #' . (int) ($juniorPick['id'] ?? 0));
-$db->run("UPDATE questions SET age_group = 'any'");
+
+$seniorPick = $questionsRepo->pickForLevel(1, 'random', null, 'any', $openToAll, true, 'senior');
+$suite->check('a senior can be asked the senior-only ones',
+    $seniorPick !== null && !in_array((int) $seniorPick['id'], $openToAll, true),
+    'picked #' . (int) ($seniorPick['id'] ?? 0));
+
+// A bank aimed entirely at seniors must still let a junior play.
+$db->run("UPDATE questions SET age_group = 'senior'");
+$fallbackState = $engine->createGame($juniorId, null, null, false, true);
+$fallbackId = (int) $fallbackState['game_id'];
+$fallbackState = $engine->startGame($fallbackId);
+$suite->check('a junior can still play when every question is senior',
+    ($fallbackState['question']['text'] ?? '') !== '',
+    'the picker falls back rather than stalling the show');
+$suite->check('and the fallback is written to the game log',
+    (int) $db->scalar("SELECT COUNT(*) FROM game_events WHERE game_id = ? AND event_type = 'question.age_group_fallback'",
+        [$fallbackId]) > 0,
+    'recorded, so it is never silent');
+$engine->endGame($fallbackId, 'abandoned');
+$suite->equals('the counter still reports what a junior can be asked',
+    $questionsRepo->availableToday('junior') > 0, true);
+
+foreach ($ageGroupBefore as $questionId => $group) {
+    $db->run('UPDATE questions SET age_group = ? WHERE id = ?', [$group, $questionId]);
+}
 
 // One switch: nothing asked today comes back today.
 $askedToday = [];
@@ -1387,3 +1418,113 @@ $cleanGames();
 $db->run('DELETE FROM game_switched_questions');
 $db->run('UPDATE questions SET times_used = 0, times_served = 0, last_served_at = NULL');
 SettingsService::set('question_order', 'fixed');
+
+// ---------------------------------------------------------------------------
+// 39. Replacing the question bank
+// ---------------------------------------------------------------------------
+$suite->module('39. Replacing the question bank');
+
+$seniorFile = \App\Core\Application::instance()->rootPath('database/seeds/gujarati-question-bank-senior.php');
+$openFile   = \App\Core\Application::instance()->rootPath('database/seeds/gujarati-question-bank.php');
+$suite->check('a second, senior bank ships', is_file($seniorFile));
+
+/** @var array<int,array<int,string>> $seniorRows */
+$seniorRows = require $seniorFile;
+/** @var array<int,array<int,string>> $openRows */
+$openRows = require $openFile;
+
+$suite->equals('it holds 200 questions', count($seniorRows), 200);
+
+$seniorByCategory = [];
+$seniorProblems = [];
+$seenSenior = [];
+$normalise = static fn (string $text): string => mb_strtolower(preg_replace('/\s+/u', ' ', trim($text)) ?? $text);
+
+foreach ($seniorRows as $index => $row) {
+    $line = $index + 1;
+    if (count($row) !== 9) { $seniorProblems[] = 'row ' . $line . ': wrong shape'; continue; }
+    [$category, $difficulty, $text, $a, $b, $c, $d, $correct, $explanation] = $row;
+
+    $seniorByCategory[$category] = ($seniorByCategory[$category] ?? 0) + 1;
+    if (!in_array($correct, ['A', 'B', 'C', 'D'], true)) { $seniorProblems[] = 'row ' . $line . ': bad answer key'; }
+    if (!in_array($difficulty, ['easy', 'medium', 'hard', 'expert'], true)) { $seniorProblems[] = 'row ' . $line . ': bad difficulty'; }
+    if (count(array_unique([$a, $b, $c, $d])) !== 4) { $seniorProblems[] = 'row ' . $line . ': repeated option'; }
+    foreach ([$a, $b, $c, $d] as $option) {
+        if (trim((string) $option) === '') { $seniorProblems[] = 'row ' . $line . ': empty option'; }
+    }
+    if (trim($explanation) === '') { $seniorProblems[] = 'row ' . $line . ': no explanation'; }
+    if (mb_strlen($text) < 12) { $seniorProblems[] = 'row ' . $line . ': question too short'; }
+
+    $key = $normalise($text);
+    if (isset($seenSenior[$key])) { $seniorProblems[] = 'row ' . $line . ': duplicate of row ' . $seenSenior[$key]; }
+    $seenSenior[$key] = $line;
+}
+
+$suite->check('every senior question is complete and unique', $seniorProblems === [],
+    implode('; ', array_slice($seniorProblems, 0, 3)));
+$suite->equals('it covers the same five categories', count($seniorByCategory), 5);
+$suite->check('with forty in each',
+    count(array_unique(array_values($seniorByCategory))) === 1 && (int) reset($seniorByCategory) === 40,
+    implode(', ', array_map(static fn ($k, $v) => mb_substr($k, 0, 8) . '=' . $v, array_keys($seniorByCategory), $seniorByCategory)));
+
+$openKeys = [];
+foreach ($openRows as $row) { $openKeys[$normalise((string) $row[2])] = true; }
+$overlap = 0;
+foreach ($seniorRows as $row) {
+    if (isset($openKeys[$normalise((string) $row[2])])) { $overlap++; }
+}
+$suite->equals('not one question is shared with the open bank', $overlap, 0);
+
+$harder = 0;
+foreach ($seniorRows as $row) {
+    if (in_array($row[1], ['medium', 'hard', 'expert'], true)) { $harder++; }
+}
+$suite->check('and it is pitched harder', $harder >= 180, $harder . ' of 200 are medium or hard');
+
+// Clearing and reloading, the way the reset does it.
+$seeder = \App\Services\SeederService::make($db);
+$before = (int) $db->scalar('SELECT COUNT(*) FROM questions');
+$cleared = $seeder->clearQuestions();
+
+$suite->equals('clearing removes every question', (int) $db->scalar('SELECT COUNT(*) FROM questions'), 0);
+$suite->equals('and every option with it', (int) $db->scalar('SELECT COUNT(*) FROM question_options'), 0);
+$suite->equals('it reports what it removed', (int) $cleared['questions'], $before);
+$suite->check('participants, prizes and settings are untouched',
+    (int) $db->scalar('SELECT COUNT(*) FROM participants') > 0
+    && (int) $db->scalar('SELECT COUNT(*) FROM prize_levels') > 0
+    && (int) $db->scalar('SELECT COUNT(*) FROM settings') > 0,
+    'only questions and the games that used them go');
+
+$loaded = $seeder->seedQuestionBank('senior');
+$suite->equals('the senior bank loads', $loaded, 200);
+$suite->equals('every loaded question is marked senior',
+    (int) $db->scalar("SELECT COUNT(*) FROM questions WHERE age_group = 'senior'"), 200);
+$suite->equals('each category holds forty',
+    (int) $db->scalar("SELECT COUNT(DISTINCT category_id) FROM questions"), 5);
+$suite->check('and each question kept its four options',
+    (int) $db->scalar('SELECT COUNT(*) FROM question_options') === 800,
+    $db->scalar('SELECT COUNT(*) FROM question_options') . ' options');
+
+// The admin screen, including the confirmation it insists on.
+$http->get('/admin/questions/reset');
+$suite->equals('the replace screen renders', $http->status, 200);
+$suite->check('it warns what will be removed', str_contains($http->body, 'game(s) that used them'));
+$suite->check('and offers both banks',
+    str_contains($http->body, 'value="senior"') && str_contains($http->body, 'value="open"'));
+
+$countBefore = (int) $db->scalar('SELECT COUNT(*) FROM questions');
+$http->get('/admin/questions/reset');
+$http->post('/admin/questions/reset', ['_token' => $http->token(), 'bank' => 'open', 'confirm' => 'maybe']);
+$suite->equals('the wrong confirmation word changes nothing',
+    (int) $db->scalar('SELECT COUNT(*) FROM questions'), $countBefore);
+
+$backupsBefore = (int) $db->scalar('SELECT COUNT(*) FROM backups');
+$http->get('/admin/questions/reset');
+$http->post('/admin/questions/reset', ['_token' => $http->token(), 'bank' => 'senior', 'confirm' => 'DELETE']);
+$suite->equals('the right word replaces the bank',
+    (int) $db->scalar("SELECT COUNT(*) FROM questions WHERE age_group = 'senior'"), 200);
+$suite->check('and a backup is taken first',
+    (int) $db->scalar('SELECT COUNT(*) FROM backups') > $backupsBefore,
+    'recoverable from Admin → Backups');
+$suite->check('the replacement is written to the audit log',
+    (int) $db->scalar("SELECT COUNT(*) FROM audit_logs WHERE action = 'question.bank_reset'") > 0);

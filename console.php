@@ -69,8 +69,43 @@ try {
                 echo 'Demo data seeded.' . PHP_EOL;
             }
             if (in_array('--questions', $flags, true)) {
-                $added = $seeder->seedQuestionBank();
+                $added = $seeder->seedQuestionBank(in_array('--senior', $flags, true) ? 'senior' : 'open');
                 echo $added . ' question(s) added from the Gujarati question bank.' . PHP_EOL;
+            }
+            break;
+
+        case 'questions:reset':
+            // Replaces the whole question bank before a new event.
+            $seeder = SeederService::make();
+            $database = Database::instance();
+
+            $questionCount = (int) ($database->scalar('SELECT COUNT(*) FROM questions') ?? 0);
+            $gameCount = (int) ($database->scalar('SELECT COUNT(*) FROM games') ?? 0);
+
+            if (!in_array('--force', $flags, true)) {
+                echo 'This would remove ' . $questionCount . ' question(s) and the '
+                    . $gameCount . ' game(s) that used them.' . PHP_EOL
+                    . 'Nothing has been changed. Re-run with --force to go ahead;'
+                    . ' a database backup is taken first.' . PHP_EOL;
+                break;
+            }
+
+            $safety = BackupService::make()->backupDatabase(null, 'Before question bank reset');
+            echo 'Backup taken: ' . $safety['filename'] . ' (' . $safety['size_human'] . ')' . PHP_EOL;
+
+            $cleared = $seeder->clearQuestions();
+            echo $cleared['questions'] . ' question(s) and ' . $cleared['games']
+                . ' game(s) removed.' . PHP_EOL;
+
+            if (in_array('--both', $flags, true)) {
+                $openAdded = $seeder->seedQuestionBank('open');
+                $seniorAdded = $seeder->seedQuestionBank('senior');
+                echo ($openAdded + $seniorAdded) . ' question(s) loaded ('
+                    . $openAdded . ' open, ' . $seniorAdded . ' senior).' . PHP_EOL;
+            } else {
+                $bank = in_array('--open', $flags, true) ? 'open' : 'senior';
+                $added = $seeder->seedQuestionBank($bank);
+                echo $added . ' question(s) loaded from the ' . $bank . ' bank.' . PHP_EOL;
             }
             break;
 

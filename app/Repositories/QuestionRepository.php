@@ -334,15 +334,24 @@ final class QuestionRepository extends Repository
             $where[] = '(last_served_at IS NULL OR last_served_at < :today)';
             $bindings['today'] = date('Y-m-d 00:00:00');
         }
-        if ($ageGroup !== '' && SettingsService::bool('age_group_questions', true)) {
+        $byGroup = $ageGroup !== '' && SettingsService::bool('age_group_questions', true);
+        if ($byGroup) {
             $where[] = "age_group IN ('any', :agegroup)";
             $bindings['agegroup'] = $ageGroup;
         }
 
-        return (int) ($this->db->scalar(
+        $count = (int) ($this->db->scalar(
             'SELECT COUNT(*) FROM questions WHERE ' . implode(' AND ', $where),
             $bindings
         ) ?? 0);
+
+        // A bank aimed entirely at one group still lets the other play - the
+        // picker falls back - so report what this group can really be asked.
+        if ($count === 0 && $byGroup) {
+            return $this->availableToday('');
+        }
+
+        return $count;
     }
 
     /**

@@ -1,7 +1,7 @@
 # Verification report
 
 **Application:** Ganpati Bapa Quiz Show
-**Version:** 1.7.0
+**Version:** 1.8.0
 **Date:** 13 September 2026
 
 ## Test environment
@@ -26,7 +26,7 @@ development tool only — the application itself still has no Node dependency.
 
 ## Result
 
-**419 checks executed, 419 passed, 0 failed**, plus **39 browser checks, all passed**.
+**444 checks executed, 444 passed, 0 failed**, plus **39 browser checks, all passed**.
 
 Per-check output is in [`verification-results.md`](verification-results.md).
 
@@ -151,6 +151,10 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 | Uploads | Admin guidance | Settings states the limit in force before anything is uploaded | PASS |
 | New game | Open game left behind | Refusal names the blocking game and its participant; one confirmation ends it and creates the new game | PASS |
 | New game | Audit | The automatic takeover is recorded as `game.replaced`; the old game is closed, never deleted | PASS |
+| Question bank | Senior bank | A second bank of 200, 40 per category, sharing no question with the open bank and pitched harder (191 of 200 medium or hard) | PASS |
+| Question bank | Replacement | Clearing removes every question and option and reports what went; participants, prizes and settings are untouched | PASS |
+| Question bank | Guardrails | The replace screen warns what will go, refuses the wrong confirmation word, takes a database backup first and writes to the audit log | PASS |
+| Question bank | Age fallback | A bank aimed entirely at seniors still lets a junior play, and the fallback is recorded in the game log | PASS |
 | Show day | Age groups | A 14-year-old plays as a junior and a 35-year-old as a senior; the group can also be pinned by hand | PASS |
 | Show day | Question targeting | A junior is never asked a question marked senior-only | PASS |
 | Show day | No repeats today | Three shows in a row repeat nothing; the counter reports what is left for each group | PASS |
@@ -190,7 +194,7 @@ Per-check output is in [`verification-results.md`](verification-results.md).
 
 ## What was verified how
 
-**Automated** (`tests/verify.php`, 419 assertions; `tests/layout.js`, 39 browser assertions): everything in the table above
+**Automated** (`tests/verify.php`, 444 assertions; `tests/layout.js`, 39 browser assertions): everything in the table above
 except where noted below. The suite drives the real HTTP application with real
 cookies and CSRF tokens, and asserts against the live database.
 
